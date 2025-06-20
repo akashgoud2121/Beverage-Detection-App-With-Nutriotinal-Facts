@@ -9,7 +9,8 @@ from plotly.subplots import make_subplots
 import pandas as pd
 
 # API endpoint
-API_URL = "https://beverage-detection-backend.onrender.com"  # Change if deploying elsewhere
+API_URL = "https://beverage-detection-backend.onrender.com"
+NUTRITION_DB_URL = "https://beverage-detection-backend.onrender.com"
 
 # Page configuration
 st.set_page_config(
@@ -95,7 +96,7 @@ st.markdown("""
 @st.cache_data
 def fetch_nutrition_database():
     try:
-        response = requests.get("https://beverage-detection-backend.onrender.com")
+        response = requests.get("NUTRITION_DB_URL")
         if response.status_code == 200:
             return response.json()
         else:
