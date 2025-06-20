@@ -56,3 +56,7 @@ async def detect_beverage(file: UploadFile = File(...)):
 @app.get("/nutrition_database")
 def get_nutrition_database():
     return JSONResponse(content=NUTRITION_DATABASE)
+
+@app.get("/")
+def root():
+    return {"message": "Smart Beverage Health Scanner API is running."}
