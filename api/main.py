@@ -9,7 +9,7 @@ import numpy as np
 import cv2
 import os
 
-from detector import StreamlitBeverageDetector, NUTRITION_DATABASE
+from .detector import StreamlitBeverageDetector, NUTRITION_DATABASE
 
 app = FastAPI()
 
@@ -23,7 +23,7 @@ app.add_middleware(
 )
 
 # Load model once at startup
-MODEL_PATH = os.getenv("YOLO_MODEL_PATH", r"C:\Users\user\OneDrive\Desktop\Smart Beverage Health Scanner\api\models\model_final.pt")  # Set your model path
+MODEL_PATH = os.getenv("YOLO_MODEL_PATH", "api/models/model_final.pt")  # Set your model path
 detector = StreamlitBeverageDetector(model_path=MODEL_PATH, confidence_threshold=0.6)
 detector.load_model()
 
