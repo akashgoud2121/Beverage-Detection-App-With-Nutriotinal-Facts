@@ -359,7 +359,7 @@ NUTRITION_DATABASE = {
 }
 
 class StreamlitBeverageDetector:
-    def __init__(self, model_path=None, confidence_threshold=0.5):
+    def __init__(self,  _path=None, confidence_threshold=0.5):
         self.model_path = model_path
         self.confidence_threshold = confidence_threshold
         self.model = None

@@ -96,7 +96,7 @@ st.markdown("""
 @st.cache_data
 def fetch_nutrition_database():
     try:
-        response = requests.get("NUTRITION_DB_URL")
+        response = requests.get(NUTRITION_DB_URL)
         if response.status_code == 200:
             return response.json()
         else:
