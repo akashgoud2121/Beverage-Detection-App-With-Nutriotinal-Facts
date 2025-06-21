@@ -19,6 +19,7 @@ import io
 import base64
 
 # Sample images for testing (base64 encoded or you can upload them to your app)
+<<<<<<< HEAD
 image_dir = r"C:\Users\user\OneDrive\Desktop\Smart Beverage Health Scanner\Sample_Images"
 SAMPLE_IMAGES = {}
 if os.path.exists(image_dir):
@@ -27,6 +28,14 @@ if os.path.exists(image_dir):
         for i, fname in enumerate(os.listdir(image_dir))
         if fname.lower().endswith((".jpg", ".jpeg", ".png"))
     }
+=======
+image_dir = r"https://github.com/akashgoud2121/Beverage-Detection-App-With-Nutriotinal-Facts/tree/main/Sample_Images"
+SAMPLE_IMAGES = {
+    f"Image {i+1}": os.path.join(image_dir, fname)
+    for i, fname in enumerate(os.listdir(image_dir))
+    if fname.lower().endswith((".jpg", ".jpeg", ".png"))
+}
+>>>>>>> 3fbb278dbb31cbc63f9326d21ca136019bda1e34
 
 class AutoModelLoader:
     def __init__(self):
