@@ -93,43 +93,129 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+# Fallback nutrition database in case API is not available
+FALLBACK_NUTRITION_DATABASE = {
+    "Coca-Cola": {
+        "sugar_per_100ml": 10.6,
+        "calories_per_100ml": 42,
+        "caffeine_per_100ml": 10.4
+    },
+    "Pepsi": {
+        "sugar_per_100ml": 11.0,
+        "calories_per_100ml": 43,
+        "caffeine_per_100ml": 10.1
+    },
+    "Sprite": {
+        "sugar_per_100ml": 9.0,
+        "calories_per_100ml": 37,
+        "caffeine_per_100ml": 0
+    },
+    "Red Bull": {
+        "sugar_per_100ml": 11.0,
+        "calories_per_100ml": 45,
+        "caffeine_per_100ml": 80
+    },
+    "Monster Energy": {
+        "sugar_per_100ml": 11.0,
+        "calories_per_100ml": 47,
+        "caffeine_per_100ml": 86
+    },
+    "Orange Juice": {
+        "sugar_per_100ml": 8.4,
+        "calories_per_100ml": 36,
+        "caffeine_per_100ml": 0
+    },
+    "Apple Juice": {
+        "sugar_per_100ml": 10.0,
+        "calories_per_100ml": 46,
+        "caffeine_per_100ml": 0
+    },
+    "Water": {
+        "sugar_per_100ml": 0,
+        "calories_per_100ml": 0,
+        "caffeine_per_100ml": 0
+    }
+}
+
 @st.cache_data
 def fetch_nutrition_database():
     try:
-        response = requests.get(NUTRITION_DB_URL, timeout=10)  # Added timeout
-        if response.status_code == 200:
-            return response.json()
-        else:
-            st.error(f"Could not fetch nutrition database from backend. Status: {response.status_code}")
-            return {}
+        with st.spinner("Connecting to nutrition database..."):
+            response = requests.get(NUTRITION_DB_URL, timeout=15)  # Increased timeout
+            if response.status_code == 200:
+                st.success("✅ Successfully connected to backend database!")
+                return response.json()
+            else:
+                st.warning(f"Backend API returned status {response.status_code}. Using fallback database.")
+                return FALLBACK_NUTRITION_DATABASE
+    except requests.exceptions.Timeout:
+        st.warning("⏰ Backend API timed out. Using fallback nutrition database.")
+        return FALLBACK_NUTRITION_DATABASE
+    except requests.exceptions.ConnectionError:
+        st.warning("🔌 Could not connect to backend API. Using fallback nutrition database.")
+        return FALLBACK_NUTRITION_DATABASE
     except requests.exceptions.RequestException as e:
-        st.error(f"Error connecting to backend API: {e}")
-        return {}
+        st.warning(f"API connection issue: {str(e)[:100]}... Using fallback database.")
+        return FALLBACK_NUTRITION_DATABASE
     except Exception as e:
-        st.error(f"Error fetching nutrition database: {e}")
-        return {}
+        st.warning(f"Unexpected error: {str(e)[:100]}... Using fallback database.")
+        return FALLBACK_NUTRITION_DATABASE
 
 # Nutrition database for dashboard and comparison (copy from backend or load via API if needed)
 NUTRITION_DATABASE = fetch_nutrition_database()
 
 def detect_via_api(image: Image.Image):
+    """Detect beverages via API with improved error handling and fallback"""
     buffered = io.BytesIO()
     image.save(buffered, format="JPEG")
     buffered.seek(0)  # Reset buffer position
     files = {"file": ("image.jpg", buffered.getvalue(), "image/jpeg")}
-    try:
-        response = requests.post(API_URL, files=files, timeout=30)  # Added timeout
-        if response.status_code == 200:
-            return response.json()
-        else:
-            st.error(f"API error: {response.status_code} - {response.text}")
-            return []
-    except requests.exceptions.RequestException as e:
-        st.error(f"Could not connect to backend API: {e}")
-        return []
-    except Exception as e:
-        st.error(f"Unexpected error: {e}")
-        return []
+    
+    # Try multiple timeout strategies
+    timeouts = [45, 60]  # Increased timeouts for slow API
+    
+    for timeout in timeouts:
+        try:
+            st.info(f"🔄 Attempting connection (timeout: {timeout}s)...")
+            response = requests.post(API_URL, files=files, timeout=timeout)
+            if response.status_code == 200:
+                st.success("✅ Successfully connected to detection API!")
+                return response.json()
+            else:
+                st.error(f"❌ API error: {response.status_code} - {response.text}")
+                break
+        except requests.exceptions.Timeout:
+            st.warning(f"⏰ Request timed out after {timeout}s...")
+            if timeout == timeouts[-1]:  # Last attempt
+                st.error("❌ All connection attempts failed due to timeout")
+                return create_demo_detection()
+        except requests.exceptions.ConnectionError:
+            st.error("🔌 Connection error - Backend may be down")
+            return create_demo_detection()
+        except requests.exceptions.RequestException as e:
+            st.error(f"❌ Request failed: {str(e)[:100]}...")
+            return create_demo_detection()
+        except Exception as e:
+            st.error(f"❌ Unexpected error: {str(e)[:100]}...")
+            return create_demo_detection()
+    
+    return []
+
+def create_demo_detection():
+    """Create a demo detection result when API is unavailable"""
+    st.info("🔄 API unavailable. Showing demo detection results...")
+    return [
+        {
+            "confidence": 0.85,
+            "nutrition": {
+                "name": "Demo Beverage (API Unavailable)",
+                "total_sugar_g": 35.0,
+                "total_calories": 140,
+                "total_caffeine_mg": 34,
+                "comparison_message": "Demo mode - This is higher in sugar than most beverages in our database."
+            }
+        }
+    ]
 
 def create_nutrition_chart(nutrition_data):
     """Create a nutrition visualization chart"""
@@ -226,10 +312,31 @@ def main():
     # Sidebar
     with st.sidebar:
         st.markdown("## 🛠️ Controls")
+        
+        # API Status indicator
+        st.markdown("### 🌐 Backend Status")
+        if st.button("🔄 Check API Status"):
+            with st.spinner("Checking backend..."):
+                try:
+                    response = requests.get(NUTRITION_DB_URL, timeout=10)
+                    if response.status_code == 200:
+                        st.success("✅ Backend API is responsive")
+                    else:
+                        st.warning(f"⚠️ API returned status {response.status_code}")
+                except requests.exceptions.Timeout:
+                    st.error("❌ API timeout - Backend may be slow")
+                except requests.exceptions.ConnectionError:
+                    st.error("❌ Connection failed - Backend may be down")
+                except Exception as e:
+                    st.error(f"❌ Error: {str(e)[:50]}...")
+        
+        st.markdown("---")
         st.markdown("### Detection Settings")
         confidence_threshold = st.slider("Detection Confidence (for display only)", 0.1, 1.0, 0.6, 0.1)
         show_health_info = st.checkbox("Show Health Warnings", True)
         show_comparisons = st.checkbox("Show Health Comparisons", True)
+        demo_mode = st.checkbox("Use Demo Mode (if API fails)", False)
+        
         st.markdown("---")
         st.markdown("### 📊 Quick Stats")
         if len(NUTRITION_DATABASE) > 0:
@@ -268,7 +375,7 @@ def main():
             
             if uploaded_file is not None:
                 image = Image.open(uploaded_file)
-                st.image(image, caption="Your uploaded image", use_container_width=True, output_format="JPEG")
+                st.image(image, caption="Your uploaded image", use_column_width=True, output_format="JPEG")
                 
                 st.markdown("""
                 <style>
@@ -283,7 +390,11 @@ def main():
                 """, unsafe_allow_html=True)
                 
                 with st.spinner("🔍 Analyzing your beverage..."):
-                    detections = detect_via_api(image)
+                    if demo_mode:
+                        st.info("🎭 Demo mode enabled - Using sample detection")
+                        detections = create_demo_detection()
+                    else:
+                        detections = detect_via_api(image)
                 
                 if detections:
                     st.success(f"🎉 Found {len(detections)} beverage(s)!")
