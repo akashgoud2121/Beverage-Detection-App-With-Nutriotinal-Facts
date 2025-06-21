@@ -1,4 +1,9 @@
 streamlit
-requests
-Pillow
+opencv-python
+torch
+numpy
+pillow
+ultralytics
 plotly
+pandas
+requests
