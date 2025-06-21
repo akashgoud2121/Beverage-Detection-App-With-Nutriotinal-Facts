@@ -9,7 +9,7 @@ import numpy as np
 import cv2
 import os
 
-from detector import StreamlitBeverageDetector
+from .detector import StreamlitBeverageDetector
 
 app = FastAPI()
 
