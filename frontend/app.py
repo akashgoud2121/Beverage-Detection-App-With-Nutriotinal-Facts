@@ -21,12 +21,26 @@ import base64
 # Sample images for testing (base64 encoded or you can upload them to your app)
 
 
-image_dir = r"https://github.com/akashgoud2121/Beverage-Detection-App-With-Nutriotinal-Facts/tree/main/Sample_Images"
-SAMPLE_IMAGES = {
-    f"Image {i+1}": os.path.join(image_dir, fname)
-    for i, fname in enumerate(os.listdir(image_dir))
-    if fname.lower().endswith((".jpg", ".jpeg", ".png"))
-}
+import streamlit as st
+
+# List of raw image URLs from GitHub
+image_urls = [
+    "https://raw.githubusercontent.com/akashgoud2121/Beverage-Detection-App-With-Nutriotinal-Facts/main/Sample_Images/7up.jpg",
+    "https://raw.githubusercontent.com/akashgoud2121/Beverage-Detection-App-With-Nutriotinal-Facts/main/Sample_Images/Mirinda.jpg",
+    "https://raw.githubusercontent.com/akashgoud2121/Beverage-Detection-App-With-Nutriotinal-Facts/main/Sample_Images/Pepsi_normal.jpg",
+    "https://raw.githubusercontent.com/akashgoud2121/Beverage-Detection-App-With-Nutriotinal-Facts/main/Sample_Images/Pepsi_tin_zero_soda.jpg",
+    "https://raw.githubusercontent.com/akashgoud2121/Beverage-Detection-App-With-Nutriotinal-Facts/main/Sample_Images/Sting.jpg",
+    "https://raw.githubusercontent.com/akashgoud2121/Beverage-Detection-App-With-Nutriotinal-Facts/main/Sample_Images/Tea+.jpg",
+    "https://raw.githubusercontent.com/akashgoud2121/Beverage-Detection-App-With-Nutriotinal-Facts/main/Sample_Images/Twister_juice.jpg"
+]
+
+# Display the images in Streamlit
+st.title("Beverage Image Gallery")
+
+# Create a gallery to display the images
+for image_url in image_urls:
+    st.image(image_url, caption=image_url.split('/')[-1], use_column_width=True)
+
 
 class AutoModelLoader:
     def __init__(self):
