@@ -18,82 +18,66 @@ from pathlib import Path
 import io
 import base64
 
-<<<<<<< HEAD
 # Sample images for testing (base64 encoded or you can upload them to your app)
 image_dir = r"C:\Users\user\OneDrive\Desktop\Smart Beverage Health Scanner\Sample_Images"
-SAMPLE_IMAGES = {
-    f"Image {i+1}": os.path.join(image_dir, fname)
-    for i, fname in enumerate(os.listdir(image_dir))
-    if fname.lower().endswith((".jpg", ".jpeg", ".png"))
-}
+SAMPLE_IMAGES = {}
+if os.path.exists(image_dir):
+    SAMPLE_IMAGES = {
+        f"Image {i+1}": os.path.join(image_dir, fname)
+        for i, fname in enumerate(os.listdir(image_dir))
+        if fname.lower().endswith((".jpg", ".jpeg", ".png"))
+    }
 
-# Add this class before your main() function
 class AutoModelLoader:
     def __init__(self):
         self.models_dir = Path("models")
         self.models_dir.mkdir(exist_ok=True)
-        # Fixed: Using a proper direct download URL instead of Google Drive view link
         self.default_model_url = "https://drive.google.com/uc?export=download&id=10APdf_86N9JLIlpz1vvVL69suHV68VeY"
         self.model_filename = "model_final.pt"
-    
+
     @st.cache_data
     def get_default_model(_self):
         model_path = _self.models_dir / _self.model_filename
-        
         if not model_path.exists():
             st.info("🤖 Downloading default model... This will only happen once!")
             try:
-                # Fixed: Proper headers and error handling for download
                 headers = {
                     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
                 }
                 response = requests.get(_self.default_model_url, stream=True, headers=headers, timeout=60)
                 response.raise_for_status()
-                
-                # Check if response content is valid
                 content_type = response.headers.get('content-type', '')
                 if 'text/html' in content_type:
                     st.error("❌ Invalid model URL - received HTML instead of model file")
                     return None
-                
                 total_size = int(response.headers.get('content-length', 0))
                 progress_bar = st.progress(0)
                 downloaded = 0
-                
                 with open(model_path, 'wb') as f:
                     for chunk in response.iter_content(chunk_size=8192):
                         if chunk:
                             f.write(chunk)
                             downloaded += len(chunk)
                             if total_size > 0:
-                                progress_bar.progress(downloaded / total_size)
-                
+                                progress_bar.progress(min(downloaded / total_size, 1.0))
                 progress_bar.empty()
                 st.success("✅ Default model downloaded successfully!")
-                
             except Exception as e:
                 st.error(f"❌ Failed to download model: {str(e)}")
                 if model_path.exists():
-                    model_path.unlink()  # Remove partial download
+                    model_path.unlink()
                 return None
-        
         return str(model_path)
 
     def validate_model_file(self, model_path):
-        """Validate that the downloaded file is a valid PyTorch model"""
         try:
-            # Check file size
-            if os.path.getsize(model_path) < 1000:  # Less than 1KB is suspicious
+            if os.path.getsize(model_path) < 1000:
                 return False
-            
-            # Try to load with torch to validate
             torch.load(model_path, map_location='cpu')
             return True
         except Exception:
             return False
 
-=======
->>>>>>> 808dc8cc3c9b23fb8105c49a4e9a2769880bb54b
 # Page configuration
 st.set_page_config(
     page_title="🥤 Smart Beverage Health Scanner",
@@ -147,7 +131,6 @@ st.markdown("""
         text-align: center;
         margin: 0.5rem 0;
     }
-<<<<<<< HEAD
     
     /* Fixed sample image gallery styling */
     .sample-gallery {
@@ -220,51 +203,8 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# [NUTRITION_DATABASE would be inserted here - keeping it out as requested]
-=======
-
-    /* Dark mode overrides */
-/* Dark mode compatibility */
-body[data-theme="dark"] .info-box {
-    background-color: #1e3a8a;  /* Darker blue */
-    color: #e0f2fe;
-    border-left: 5px solid #60a5fa;
-}
-
-body[data-theme="dark"] .warning-box {
-    background-color: #7f1d1d;
-    color: #fca5a5;
-    border-left: 5px solid #ef4444;
-}
-
-body[data-theme="dark"] .success-box {
-    background-color: #14532d;
-    color: #bbf7d0;
-    border-left: 5px solid #22c55e;
-}
-
-/* Dark mode compatibility for the tips box */
-body[data-theme="dark"] .main-header {
-    color: #e5e5e5;
-}
-
-/* List items in dark mode */
-body[data-theme="dark"] ul {
-    color: #e5e5e5;
-}
-
-/* Make sure the tips box has a darker background in dark mode */
-body[data-theme="dark"] .info-box ul li {
-    color: #e5e5e5;
-    font-weight: normal;
-}
-
-</style>
-""", unsafe_allow_html=True)
-
 
 # Nutrition Database (same as your original)
->>>>>>> 808dc8cc3c9b23fb8105c49a4e9a2769880bb54b
 NUTRITION_DATABASE = {
     "pepsi": {
         "name": "Pepsi Cola",
@@ -618,10 +558,7 @@ NUTRITION_DATABASE = {
         "health_warning": "Moderate sugar content"
     }
 }
-<<<<<<< HEAD
-=======
 
->>>>>>> 808dc8cc3c9b23fb8105c49a4e9a2769880bb54b
 class StreamlitBeverageDetector:
     def __init__(self, model_path=None, confidence_threshold=0.5):
         self.model_path = model_path
@@ -631,7 +568,6 @@ class StreamlitBeverageDetector:
     def load_model(self):
         if self.model_path and os.path.exists(self.model_path):
             try:
-<<<<<<< HEAD
                 # Fixed: Better error handling and validation
                 self.model = YOLO(self.model_path)
                 # Test the model with a dummy prediction to ensure it works
@@ -643,17 +579,10 @@ class StreamlitBeverageDetector:
                 # Additional debugging info
                 if "invalid load key" in str(e):
                     st.error("The model file appears to be corrupted or not a valid PyTorch model file.")
-=======
-                self.model = YOLO(self.model_path)
-                return True
-            except Exception as e:
-                st.error(f"Error loading model: {str(e)}")
->>>>>>> 808dc8cc3c9b23fb8105c49a4e9a2769880bb54b
                 return False
         return False
     
     def get_nutrition_info(self, class_name, volume=None):
-<<<<<<< HEAD
     # Search for the class_name in the NUTRITION_DATABASE
         beverage = NUTRITION_DATABASE.get(class_name.lower().replace(" ", "_"), None)
         
@@ -675,43 +604,10 @@ class StreamlitBeverageDetector:
             # If not found, return None or placeholder
             return None
 
-=======
-        clean_name = class_name.lower().strip()
-        if clean_name in NUTRITION_DATABASE:
-            data = NUTRITION_DATABASE[clean_name]
-            if volume is None:
-                volume = data['typical_volume']
-            
-            sugar_g = round((data['sugar_per_100ml'] * volume) / 100, 1)
-            sugar_grams_daily_limit = 25
-            
-            comparison_message = ""
-            if sugar_g <= sugar_grams_daily_limit:
-                comparison_message = f"✅ Within daily sugar limit"
-            else:
-                excess = sugar_g - sugar_grams_daily_limit
-                comparison_message = f"⚠️ Exceeds daily limit by {excess}g"
-            
-            return {
-                "name": data['name'],
-                "volume_ml": volume,
-                "total_sugar_g": sugar_g,
-                "total_calories": round((data['calories_per_100ml'] * volume) / 100),
-                "total_caffeine_mg": round((data['caffeine_per_100ml'] * volume) / 100, 1),
-                "health_warning": data.get('health_warning', ''),
-                "comparison_message": comparison_message,
-                "sugar_per_100ml": data['sugar_per_100ml'],
-                "calories_per_100ml": data['calories_per_100ml'],
-                "caffeine_per_100ml": data['caffeine_per_100ml']
-            }
-        return None
->>>>>>> 808dc8cc3c9b23fb8105c49a4e9a2769880bb54b
-    
     def detect_beverages(self, image):
         if self.model is None:
             return []
         
-<<<<<<< HEAD
         try:
             results = self.model(image, conf=self.confidence_threshold, verbose=False)
             detections = []
@@ -742,58 +638,25 @@ class StreamlitBeverageDetector:
 def create_sample_image_gallery():
     """Create a compact sample image gallery"""
     st.markdown("### 🖼️ Sample Images for Testing")
-    
-    # Create an expander to save space
+    if not SAMPLE_IMAGES:
+        st.info("No sample images found in the Sample_Images folder.")
+        return
     with st.expander("Click to view sample images", expanded=False):
         st.markdown("Select any sample image below to test the scanner:")
-        
-        # Create columns for compact layout
-        cols = st.columns(4)  # Reduced to 4 columns for better fit
-        
+        cols = st.columns(4)
         for i, (name, path) in enumerate(SAMPLE_IMAGES.items()):
             with cols[i % 4]:
                 try:
                     pil_img = Image.open(path)
-                    # Resize image for thumbnail display
                     pil_img.thumbnail((150, 150), Image.Resampling.LANCZOS)
-                    
-                    # Display thumbnail
                     st.image(pil_img, caption=name, width=150)
-                    
-                    # Button to select image
-                    if st.button(f"Use {name}", key=f"sample_{i}", use_container_width=True):
-                        # Load full-size image when selected
+                    if st.button(f"Use {name}", key=f"sample_{i}"):
                         full_img = Image.open(path)
                         st.session_state.selected_sample = full_img
                         st.session_state.sample_name = name
                         st.rerun()
-                        
                 except Exception as e:
                     st.error(f"Error loading {name}: {str(e)}")
-=======
-        results = self.model(image, conf=self.confidence_threshold)
-        detections = []
-        
-        for result in results:
-            boxes = result.boxes
-            if boxes is not None:
-                for box in boxes:
-                    x1, y1, x2, y2 = box.xyxy[0].cpu().numpy().astype(int)
-                    confidence = float(box.conf[0].cpu().numpy())
-                    class_id = int(box.cls[0].cpu().numpy())
-                    class_name = self.model.names[class_id]
-                    
-                    nutrition = self.get_nutrition_info(class_name)
-                    if nutrition:
-                        detections.append({
-                            'bbox': (x1, y1, x2, y2),
-                            'confidence': confidence,
-                            'class_name': class_name,
-                            'nutrition': nutrition
-                        })
-        
-        return detections
->>>>>>> 808dc8cc3c9b23fb8105c49a4e9a2769880bb54b
 
 def main():
     # Initialize session state
@@ -809,14 +672,8 @@ def main():
     # Sidebar
     with st.sidebar:
         st.markdown("## 🛠️ Controls")
-        
-<<<<<<< HEAD
-        # Auto model loader
         auto_loader = AutoModelLoader()
-        
         st.markdown("### AI Model Setup")
-        
-        # Quick start with default model
         if st.button("🚀 Quick Start (Use Default Model)"):
             with st.spinner("Downloading model..."):
                 default_model_path = auto_loader.get_default_model()
@@ -826,80 +683,41 @@ def main():
                     st.rerun()
                 else:
                     st.error("❌ Failed to download or validate model")
-        
-        # Optional: Upload custom model
         st.markdown("**Or upload your own model:**")
         uploaded_model = st.file_uploader("Upload YOLO model (.pt file)", type=['pt'])
-        
-=======
-        # Model upload/selection
-        st.markdown("### AI Model Setup")
-        uploaded_model = st.file_uploader("Upload your YOLO model (.pt file)", type=['pt'])
-        
-        model_path = None
->>>>>>> 808dc8cc3c9b23fb8105c49a4e9a2769880bb54b
         if uploaded_model:
             model_path = f"temp_model_{uploaded_model.name}"
             with open(model_path, "wb") as f:
                 f.write(uploaded_model.read())
-<<<<<<< HEAD
-            
-            # Validate uploaded model
             if auto_loader.validate_model_file(model_path):
                 st.session_state.model_path = model_path
                 st.success("✅ Custom model uploaded successfully!")
             else:
                 st.error("❌ Invalid model file uploaded")
                 os.remove(model_path)
-=======
->>>>>>> 808dc8cc3c9b23fb8105c49a4e9a2769880bb54b
-        
-        # Settings
         st.markdown("### Detection Settings")
         confidence = st.slider("Detection Confidence", 0.1, 1.0, 0.6, 0.1)
-        
-        # Health Info Toggle
         show_health_info = st.checkbox("Show Health Warnings", True)
         show_comparisons = st.checkbox("Show Health Comparisons", True)
-        
         st.markdown("---")
         st.markdown("### 📊 Quick Stats")
-<<<<<<< HEAD
-        # Placeholder stats (would use NUTRITION_DATABASE)
-        st.metric("Beverages in Database", "50+")
-        st.metric("Avg Sugar (per 100ml)", "8.5g")
-    
-    # Get model path from session state
-    model_path = st.session_state.get('model_path', None)
-=======
         if len(NUTRITION_DATABASE) > 0:
             st.metric("Beverages in Database", len(NUTRITION_DATABASE))
             avg_sugar = np.mean([v['sugar_per_100ml'] for v in NUTRITION_DATABASE.values()])
             st.metric("Avg Sugar (per 100ml)", f"{avg_sugar:.1f}g")
->>>>>>> 808dc8cc3c9b23fb8105c49a4e9a2769880bb54b
-    
-    # Initialize detector
+
+    model_path = st.session_state.get('model_path', None)
     detector = StreamlitBeverageDetector(model_path, confidence)
-    
-    # Main content tabs
     tab1, tab2, tab3, tab4 = st.tabs(["📸 Scan Your Drink", "📊 Health Dashboard", "🧠 Learn More", "📈 Compare Beverages"])
-    
+
     with tab1:
-<<<<<<< HEAD
         if st.session_state.get('model_path'):
             st.markdown("## Upload Your Beverage Photo")
-            
-            # Compact sample images gallery
             create_sample_image_gallery()
-            
             st.markdown("---")
             st.markdown("## Or Upload Your Own Image")
         else:
             st.info("👈 Click 'Quick Start' in the sidebar to begin!")
-=======
-        st.markdown("## Upload Your Beverage Photo")
->>>>>>> 808dc8cc3c9b23fb8105c49a4e9a2769880bb54b
-        
         col1, col2 = st.columns([2, 1])
         with col2:
             st.markdown("""
@@ -913,53 +731,28 @@ def main():
             </ul>
             </div>
             """, unsafe_allow_html=True)
-        
         with col1:
-            # Handle sample image selection
             image = None
             image_source = ""
-            
             if st.session_state.selected_sample is not None:
                 image = st.session_state.selected_sample
                 image_source = f"Sample: {st.session_state.get('sample_name', 'Unknown')}"
                 st.info(f"Using sample image: {st.session_state.get('sample_name', 'Unknown')}")
-            
             uploaded_file = st.file_uploader(
-                "Choose an image...", 
+                "Choose an image...",
                 type=['jpg', 'jpeg', 'png', 'bmp'],
                 help="Upload a photo of your beverage"
             )
-            
             if uploaded_file is not None:
                 image = Image.open(uploaded_file)
-<<<<<<< HEAD
                 image_source = "Uploaded file"
                 # Clear sample selection when new file is uploaded
                 st.session_state.selected_sample = None
-            
             if image is not None:
                 # Fixed: Remove use_container_width parameter
                 st.image(image, caption=f"Your image ({image_source})")
 
                 # Use the model_path variable we defined earlier
-=======
-                st.image(image, caption="Your uploaded image", use_column_width=True, output_format="JPEG")
-                
-                # CSS to limit image height
-                st.markdown("""
-                <style>
-                    img {
-                        max-height: 400px !important;
-                        object-fit: contain !important;
-                        display: block;
-                        margin-left: auto;
-                        margin-right: auto;
-                    }
-                </style>
-                """, unsafe_allow_html=True)
-
-                
->>>>>>> 808dc8cc3c9b23fb8105c49a4e9a2769880bb54b
                 if model_path and detector.load_model():
                     with st.spinner("🔍 Analyzing your beverage..."):
                         # Convert PIL to OpenCV format
@@ -1008,6 +801,7 @@ def main():
                             if show_comparisons:
                                 st.markdown(f"**Health Comparison:** {nutrition['comparison_message']}")
                             
+
                             # Create a nutrition chart
                             fig = go.Figure()
                             fig.add_trace(go.Bar(
