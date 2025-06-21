@@ -88,7 +88,7 @@ class AutoModelLoader:
 
 # Page configuration
 st.set_page_config(
-    page_title="🥤 Smart Beverage Health Scanner",
+    page_title="🥤 Beverage Detection App With Nutritional Facts",
     page_icon="🥤",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -684,7 +684,7 @@ def main():
         st.session_state.selected_sample = None
 
     # Header
-    st.markdown('<h1 class="main-header">🥤 Smart Beverage Health Scanner</h1>', unsafe_allow_html=True)
+    st.markdown('<h1 class="main-header">🥤 Beverage Detection App With Nutritional Facts</h1>', unsafe_allow_html=True)
     st.markdown('<p class="sub-header">Discover what\'s really in your drink! 🔍</p>', unsafe_allow_html=True)
     
     # Sidebar
@@ -1000,7 +1000,7 @@ def main():
     st.markdown("---")
     st.markdown("""
     <div style="text-align: center; color: #666; padding: 2rem;">
-    <p>🥤 Smart Beverage Health Scanner - Make informed choices about what you drink!</p>
+    <p>🥤 Beverage Detection App With Nutritional Facts - Make informed choices about what you drink!</p>
     <p>Remember: This tool is for educational purposes. Always consult healthcare professionals for personalized advice.</p>
     </div>
     """, unsafe_allow_html=True)
