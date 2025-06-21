@@ -9,3 +9,4 @@ requests
 Pillow
 plotly
 python-multipart
+opencv-python
