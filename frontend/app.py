@@ -25,7 +25,7 @@ import streamlit as st
 
 # List of raw image URLs from GitHub
 # List of raw image URLs from GitHub
-image_urls = [
+SAMPLE_IMAGES= [
     "https://raw.githubusercontent.com/akashgoud2121/Beverage-Detection-App-With-Nutriotinal-Facts/main/Sample_Images/7up.jpg",
     "https://raw.githubusercontent.com/akashgoud2121/Beverage-Detection-App-With-Nutriotinal-Facts/main/Sample_Images/Mirinda.jpg",
     "https://raw.githubusercontent.com/akashgoud2121/Beverage-Detection-App-With-Nutriotinal-Facts/main/Sample_Images/Pepsi_normal.jpg",
@@ -655,21 +655,24 @@ class StreamlitBeverageDetector:
 def create_sample_image_gallery():
     """Create a compact sample image gallery"""
     st.markdown("### 🖼️ Sample Images for Testing")
+    
     if not SAMPLE_IMAGES:
-        st.info("No sample images found in the Sample_Images folder.")
+        st.info("No sample images found.")
         return
+    
     with st.expander("Click to view sample images", expanded=False):
         st.markdown("Select any sample image below to test the scanner:")
-        cols = st.columns(4)
-        for i, (name, path) in enumerate(SAMPLE_IMAGES.items()):
+        
+        # Create columns for compact layout
+        cols = st.columns(4)  # Reduced to 4 columns for better fit
+        
+        for i, (name, url) in enumerate(SAMPLE_IMAGES.items()):
             with cols[i % 4]:
                 try:
-                    pil_img = Image.open(path)
-                    pil_img.thumbnail((150, 150), Image.Resampling.LANCZOS)
-                    st.image(pil_img, caption=name, width=150)
+                    st.image(url, caption=name, width=150)
                     if st.button(f"Use {name}", key=f"sample_{i}"):
-                        full_img = Image.open(path)
-                        st.session_state.selected_sample = full_img
+                        # Set the selected image as the session state image
+                        st.session_state.selected_sample = url
                         st.session_state.sample_name = name
                         st.rerun()
                 except Exception as e:
