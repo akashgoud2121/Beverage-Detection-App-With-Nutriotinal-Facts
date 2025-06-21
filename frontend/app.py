@@ -20,7 +20,7 @@ import base64
 
 <<<<<<< HEAD
 # Sample images for testing (base64 encoded or you can upload them to your app)
-image_dir = r"C:\Users\user\OneDrive\Desktop\Smart Beverage Health Scanner\Sample_Images"
+image_dir = r"Beverage-Detection-App-With-Nutriotinal-Facts/Sample_Images"
 SAMPLE_IMAGES = {
     f"Image {i+1}": os.path.join(image_dir, fname)
     for i, fname in enumerate(os.listdir(image_dir))
