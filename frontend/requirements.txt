@@ -1,4 +1,11 @@
+fastapi
+uvicorn
+pillow
+numpy
+ultralytics
+opencv-python-headless
 streamlit
 requests
 Pillow
 plotly
+python-multipart
