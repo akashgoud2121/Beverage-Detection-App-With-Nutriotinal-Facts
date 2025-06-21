@@ -42,7 +42,7 @@ st.title("Beverage Image Gallery")
 image_width = 300
 
 # Create a gallery to display the images
-for image_url in image_urls:
+for image_url in SAMPLE_IMAGES:
     st.image(image_url, caption=image_url.split('/')[-1], width=image_width)
 
 class AutoModelLoader:
