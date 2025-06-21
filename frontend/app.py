@@ -99,7 +99,7 @@ st.markdown("""
 <style>
     .main-header {
         font-size: 3rem;
-        color: #FF6B6B;
+        color: #FF6B6B !important;
         text-align: center;
         margin-bottom: 2rem;
         text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
