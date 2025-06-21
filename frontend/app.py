@@ -24,6 +24,7 @@ import base64
 import streamlit as st
 
 # List of raw image URLs from GitHub
+# List of raw image URLs from GitHub
 image_urls = [
     "https://raw.githubusercontent.com/akashgoud2121/Beverage-Detection-App-With-Nutriotinal-Facts/main/Sample_Images/7up.jpg",
     "https://raw.githubusercontent.com/akashgoud2121/Beverage-Detection-App-With-Nutriotinal-Facts/main/Sample_Images/Mirinda.jpg",
@@ -34,13 +35,15 @@ image_urls = [
     "https://raw.githubusercontent.com/akashgoud2121/Beverage-Detection-App-With-Nutriotinal-Facts/main/Sample_Images/Twister_juice.jpg"
 ]
 
-# Display the images in Streamlit
+# Display the images with a fixed width
 st.title("Beverage Image Gallery")
+
+# Define a maximum width for the images (e.g., 300px)
+image_width = 300
 
 # Create a gallery to display the images
 for image_url in image_urls:
-    st.image(image_url, caption=image_url.split('/')[-1], use_column_width=True)
-
+    st.image(image_url, caption=image_url.split('/')[-1], width=image_width)
 
 class AutoModelLoader:
     def __init__(self):
