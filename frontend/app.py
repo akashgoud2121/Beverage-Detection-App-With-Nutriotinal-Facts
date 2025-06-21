@@ -25,25 +25,16 @@ import streamlit as st
 
 # List of raw image URLs from GitHub
 # List of raw image URLs from GitHub
-SAMPLE_IMAGES= [
-    "https://raw.githubusercontent.com/akashgoud2121/Beverage-Detection-App-With-Nutriotinal-Facts/main/Sample_Images/7up.jpg",
-    "https://raw.githubusercontent.com/akashgoud2121/Beverage-Detection-App-With-Nutriotinal-Facts/main/Sample_Images/Mirinda.jpg",
-    "https://raw.githubusercontent.com/akashgoud2121/Beverage-Detection-App-With-Nutriotinal-Facts/main/Sample_Images/Pepsi_normal.jpg",
-    "https://raw.githubusercontent.com/akashgoud2121/Beverage-Detection-App-With-Nutriotinal-Facts/main/Sample_Images/Pepsi_tin_zero_soda.jpg",
-    "https://raw.githubusercontent.com/akashgoud2121/Beverage-Detection-App-With-Nutriotinal-Facts/main/Sample_Images/Sting.jpg",
-    "https://raw.githubusercontent.com/akashgoud2121/Beverage-Detection-App-With-Nutriotinal-Facts/main/Sample_Images/Tea+.jpg",
-    "https://raw.githubusercontent.com/akashgoud2121/Beverage-Detection-App-With-Nutriotinal-Facts/main/Sample_Images/Twister_juice.jpg"
-]
+SAMPLE_IMAGES = {
+    "7up.jpg": "https://raw.githubusercontent.com/akashgoud2121/Beverage-Detection-App-With-Nutriotinal-Facts/main/Sample_Images/7up.jpg",
+    "Mirinda.jpg": "https://raw.githubusercontent.com/akashgoud2121/Beverage-Detection-App-With-Nutriotinal-Facts/main/Sample_Images/Mirinda.jpg",
+    "Pepsi_normal.jpg": "https://raw.githubusercontent.com/akashgoud2121/Beverage-Detection-App-With-Nutriotinal-Facts/main/Sample_Images/Pepsi_normal.jpg",
+    "Pepsi_tin_zero_soda.jpg": "https://raw.githubusercontent.com/akashgoud2121/Beverage-Detection-App-With-Nutriotinal-Facts/main/Sample_Images/Pepsi_tin_zero_soda.jpg",
+    "Sting.jpg": "https://raw.githubusercontent.com/akashgoud2121/Beverage-Detection-App-With-Nutriotinal-Facts/main/Sample_Images/Sting.jpg",
+    "Tea+.jpg": "https://raw.githubusercontent.com/akashgoud2121/Beverage-Detection-App-With-Nutriotinal-Facts/main/Sample_Images/Tea+.jpg",
+    "Twister_juice.jpg": "https://raw.githubusercontent.com/akashgoud2121/Beverage-Detection-App-With-Nutriotinal-Facts/main/Sample_Images/Twister_juice.jpg"
+}
 
-# Display the images with a fixed width
-st.title("Beverage Image Gallery")
-
-# Define a maximum width for the images (e.g., 300px)
-image_width = 300
-
-# Create a gallery to display the images
-for image_url in SAMPLE_IMAGES:
-    st.image(image_url, caption=image_url.split('/')[-1], width=image_width)
 
 class AutoModelLoader:
     def __init__(self):
@@ -576,6 +567,13 @@ NUTRITION_DATABASE = {
     }
 }
 
+# Ensure session state is initialized
+if 'selected_sample' not in st.session_state:
+    st.session_state.selected_sample = None
+if 'sample_name' not in st.session_state:
+    st.session_state.sample_name = None
+
+
 class StreamlitBeverageDetector:
     def __init__(self, model_path=None, confidence_threshold=0.5):
         self.model_path = model_path
@@ -755,7 +753,15 @@ def main():
             image = None
             image_source = ""
             if st.session_state.selected_sample is not None:
-                image = st.session_state.selected_sample
+                sample = st.session_state.selected_sample
+                # If it's a string (URL or path), load as image
+                if isinstance(sample, str):
+                    if sample.startswith("http"):
+                        image = Image.open(requests.get(sample, stream=True).raw)
+                    else:
+                        image = Image.open(sample)
+                else:
+                    image = sample
                 image_source = f"Sample: {st.session_state.get('sample_name', 'Unknown')}"
                 st.info(f"Using sample image: {st.session_state.get('sample_name', 'Unknown')}")
             uploaded_file = st.file_uploader(
