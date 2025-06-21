@@ -1,15 +1,18 @@
 import streamlit as st
-import requests
-import io
-from PIL import Image
+import cv2
+import torch
+import os
 import numpy as np
+from datetime import datetime
+from time import sleep
+from collections import Counter
+from PIL import Image
+from ultralytics import YOLO
+import json
 import plotly.graph_objects as go
 import plotly.express as px
 from plotly.subplots import make_subplots
 import pandas as pd
-
-# API endpoints - FIXED
-API_URL = "https://beverage-detection-backend.onrender.com/detect"  # Only detection endpoint needed
 
 # Page configuration
 st.set_page_config(
@@ -19,7 +22,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS for better styling (same as your original)
+# Custom CSS for better styling
 st.markdown("""
 <style>
     .main-header {
@@ -50,7 +53,7 @@ st.markdown("""
         border-radius: 5px;
     }
     .info-box {
-        background-color: #0B008A;
+        background-color: #132624;
         border-left: 5px solid #2196F3;
         padding: 1rem;
         margin: 1rem 0;
@@ -64,35 +67,48 @@ st.markdown("""
         text-align: center;
         margin: 0.5rem 0;
     }
-    body[data-theme="dark"] .info-box {
-        background-color: #1e3a8a;
-        color: #e0f2fe;
-        border-left: 5px solid #60a5fa;
-    }
-    body[data-theme="dark"] .warning-box {
-        background-color: #7f1d1d;
-        color: #fca5a5;
-        border-left: 5px solid #ef4444;
-    }
-    body[data-theme="dark"] .success-box {
-        background-color: #14532d;
-        color: #bbf7d0;
-        border-left: 5px solid #22c55e;
-    }
-    body[data-theme="dark"] .main-header {
-        color: #e5e5e5;
-    }
-    body[data-theme="dark"] ul {
-        color: #e5e5e5;
-    }
-    body[data-theme="dark"] .info-box ul li {
-        color: #e5e5e5;
-        font-weight: normal;
-    }
+
+    /* Dark mode overrides */
+/* Dark mode compatibility */
+body[data-theme="dark"] .info-box {
+    background-color: #1e3a8a;  /* Darker blue */
+    color: #e0f2fe;
+    border-left: 5px solid #60a5fa;
+}
+
+body[data-theme="dark"] .warning-box {
+    background-color: #7f1d1d;
+    color: #fca5a5;
+    border-left: 5px solid #ef4444;
+}
+
+body[data-theme="dark"] .success-box {
+    background-color: #14532d;
+    color: #bbf7d0;
+    border-left: 5px solid #22c55e;
+}
+
+/* Dark mode compatibility for the tips box */
+body[data-theme="dark"] .main-header {
+    color: #e5e5e5;
+}
+
+/* List items in dark mode */
+body[data-theme="dark"] ul {
+    color: #e5e5e5;
+}
+
+/* Make sure the tips box has a darker background in dark mode */
+body[data-theme="dark"] .info-box ul li {
+    color: #e5e5e5;
+    font-weight: normal;
+}
+
 </style>
 """, unsafe_allow_html=True)
 
-# Fallback nutrition database in case API is not available
+
+# Nutrition Database (same as your original)
 NUTRITION_DATABASE = {
     "pepsi": {
         "name": "Pepsi Cola",
@@ -447,211 +463,106 @@ NUTRITION_DATABASE = {
     }
 }
 
-def get_nutrition_info(class_name, volume=None):
-    clean_name = class_name.lower().strip()
-    data = NUTRITION_DATABASE.get(clean_name)
-    if data:
-        if volume is None:
-            volume = data['typical_volume']
-        sugar_g = round((data['sugar_per_100ml'] * volume) / 100, 1)
-        sugar_grams_daily_limit = 25
-        comparison_message = ""
-        if sugar_g <= sugar_grams_daily_limit:
-            comparison_message = f"✅ Within daily sugar limit"
-        else:
-            excess = sugar_g - sugar_grams_daily_limit
-            comparison_message = f"⚠️ Exceeds daily limit by {excess}g"
-        return {
-            "name": data['name'],
-            "volume_ml": volume,
-            "total_sugar_g": sugar_g,
-            "total_calories": round((data['calories_per_100ml'] * volume) / 100),
-            "total_caffeine_mg": round((data['caffeine_per_100ml'] * volume) / 100, 1),
-            "health_warning": data.get('health_warning', ''),
-            "comparison_message": comparison_message,
-            "sugar_per_100ml": data['sugar_per_100ml'],
-            "calories_per_100ml": data['calories_per_100ml'],
-            "caffeine_per_100ml": data['caffeine_per_100ml']
-        }
-    return None
-
-
-# Nutrition database for dashboard and comparison (copy from backend or load via API if needed)
-
-
-def detect_via_api(image: Image.Image):
-    """Detect beverages via API with improved error handling and fallback"""
-    buffered = io.BytesIO()
-    image.save(buffered, format="JPEG")
-    buffered.seek(0)  # Reset buffer position
-    files = {"file": ("image.jpg", buffered.getvalue(), "image/jpeg")}
+class StreamlitBeverageDetector:
+    def __init__(self, model_path=None, confidence_threshold=0.5):
+        self.model_path = model_path
+        self.confidence_threshold = confidence_threshold
+        self.model = None
+        
+    def load_model(self):
+        if self.model_path and os.path.exists(self.model_path):
+            try:
+                self.model = YOLO(self.model_path)
+                return True
+            except Exception as e:
+                st.error(f"Error loading model: {str(e)}")
+                return False
+        return False
     
-    # Try multiple timeout strategies
-    timeouts = [45, 60]  # Increased timeouts for slow API
-    
-    for timeout in timeouts:
-        try:
-            st.info(f"🔄 Attempting connection (timeout: {timeout}s)...")
-            response = requests.post(API_URL, files=files, timeout=timeout)
-            if response.status_code == 200:
-                st.success("✅ Successfully connected to detection API!")
-                return response.json()
+    def get_nutrition_info(self, class_name, volume=None):
+        clean_name = class_name.lower().strip()
+        if clean_name in NUTRITION_DATABASE:
+            data = NUTRITION_DATABASE[clean_name]
+            if volume is None:
+                volume = data['typical_volume']
+            
+            sugar_g = round((data['sugar_per_100ml'] * volume) / 100, 1)
+            sugar_grams_daily_limit = 25
+            
+            comparison_message = ""
+            if sugar_g <= sugar_grams_daily_limit:
+                comparison_message = f"✅ Within daily sugar limit"
             else:
-                st.error(f"❌ API error: {response.status_code} - {response.text}")
-                break
-        except requests.exceptions.Timeout:
-            st.warning(f"⏰ Request timed out after {timeout}s...")
-            if timeout == timeouts[-1]:  # Last attempt
-                st.error("❌ All connection attempts failed due to timeout")
-                return create_demo_detection()
-        except requests.exceptions.ConnectionError:
-            st.error("🔌 Connection error - Backend may be down")
-            return create_demo_detection()
-        except requests.exceptions.RequestException as e:
-            st.error(f"❌ Request failed: {str(e)[:100]}...")
-            return create_demo_detection()
-        except Exception as e:
-            st.error(f"❌ Unexpected error: {str(e)[:100]}...")
-            return create_demo_detection()
-    
-    return []
-
-def create_demo_detection():
-    """Create a demo detection result when API is unavailable"""
-    st.info("🔄 API unavailable. Showing demo detection results...")
-    return [
-        {
-            "confidence": 0.85,
-            "nutrition": {
-                "name": "Demo Beverage (API Unavailable)",
-                "total_sugar_g": 35.0,
-                "total_calories": 140,
-                "total_caffeine_mg": 34,
-                "comparison_message": "Demo mode - This is higher in sugar than most beverages in our database."
+                excess = sugar_g - sugar_grams_daily_limit
+                comparison_message = f"⚠️ Exceeds daily limit by {excess}g"
+            
+            return {
+                "name": data['name'],
+                "volume_ml": volume,
+                "total_sugar_g": sugar_g,
+                "total_calories": round((data['calories_per_100ml'] * volume) / 100),
+                "total_caffeine_mg": round((data['caffeine_per_100ml'] * volume) / 100, 1),
+                "health_warning": data.get('health_warning', ''),
+                "comparison_message": comparison_message,
+                "sugar_per_100ml": data['sugar_per_100ml'],
+                "calories_per_100ml": data['calories_per_100ml'],
+                "caffeine_per_100ml": data['caffeine_per_100ml']
             }
-        }
-    ]
-
-def create_nutrition_chart(nutrition_data):
-    """Create a nutrition visualization chart"""
-    fig = go.Figure()
+        return None
     
-    # Add bars for different nutrition components
-    categories = ['Sugar (g)', 'Calories', 'Caffeine (mg)']
-    values = [nutrition_data['total_sugar_g'], nutrition_data['total_calories'], nutrition_data['total_caffeine_mg']]
-    colors = ['#FF6B6B', '#4ECDC4', '#45B7D1']
-    
-    fig.add_trace(go.Bar(
-        x=categories,
-        y=values,
-        marker_color=colors,
-        text=values,
-        textposition='auto',
-    ))
-    
-    fig.update_layout(
-        title="Nutritional Content",
-        xaxis_title="Components",
-        yaxis_title="Amount",
-        showlegend=False,
-        height=400
-    )
-    
-    return fig
-
-def create_health_dashboard():
-    """Create a health dashboard with nutrition database insights"""
-    if not NUTRITION_DATABASE:
-        st.warning("No nutrition database available for dashboard")
-        return
-    
-    # Convert to DataFrame for easier analysis
-    df_data = []
-    for name, data in NUTRITION_DATABASE.items():
-        df_data.append({
-            'name': name,
-            'sugar_per_100ml': data['sugar_per_100ml'],
-            'calories_per_100ml': data['calories_per_100ml'],
-            'caffeine_per_100ml': data['caffeine_per_100ml']
-        })
-    
-    df = pd.DataFrame(df_data)
-    
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        # Sugar content comparison
-        fig_sugar = px.bar(
-            df.sort_values('sugar_per_100ml', ascending=False).head(10),
-            x='sugar_per_100ml',
-            y='name',
-            orientation='h',
-            title='Top 10 Beverages by Sugar Content (per 100ml)',
-            color='sugar_per_100ml',
-            color_continuous_scale='Reds'
-        )
-        fig_sugar.update_layout(height=500)
-        st.plotly_chart(fig_sugar, use_container_width=True)
-    
-    with col2:
-        # Calories vs Sugar scatter plot
-        fig_scatter = px.scatter(
-            df,
-            x='sugar_per_100ml',
-            y='calories_per_100ml',
-            hover_name='name',
-            title='Calories vs Sugar Content',
-            labels={'sugar_per_100ml': 'Sugar (g/100ml)', 'calories_per_100ml': 'Calories (per 100ml)'}
-        )
-        fig_scatter.update_layout(height=500)
-        st.plotly_chart(fig_scatter, use_container_width=True)
-    
-    # Summary statistics
-    st.markdown("### 📊 Database Statistics")
-    col1, col2, col3, col4 = st.columns(4)
-    
-    with col1:
-        st.metric("Total Beverages", len(df))
-    with col2:
-        st.metric("Avg Sugar (per 100ml)", f"{df['sugar_per_100ml'].mean():.1f}g")
-    with col3:
-        st.metric("Avg Calories (per 100ml)", f"{df['calories_per_100ml'].mean():.0f}")
-    with col4:
-        st.metric("Avg Caffeine (per 100ml)", f"{df['caffeine_per_100ml'].mean():.1f}mg")
+    def detect_beverages(self, image):
+        if self.model is None:
+            return []
+        
+        results = self.model(image, conf=self.confidence_threshold)
+        detections = []
+        
+        for result in results:
+            boxes = result.boxes
+            if boxes is not None:
+                for box in boxes:
+                    x1, y1, x2, y2 = box.xyxy[0].cpu().numpy().astype(int)
+                    confidence = float(box.conf[0].cpu().numpy())
+                    class_id = int(box.cls[0].cpu().numpy())
+                    class_name = self.model.names[class_id]
+                    
+                    nutrition = self.get_nutrition_info(class_name)
+                    if nutrition:
+                        detections.append({
+                            'bbox': (x1, y1, x2, y2),
+                            'confidence': confidence,
+                            'class_name': class_name,
+                            'nutrition': nutrition
+                        })
+        
+        return detections
 
 def main():
     # Header
     st.markdown('<h1 class="main-header">🥤 Smart Beverage Health Scanner</h1>', unsafe_allow_html=True)
     st.markdown('<p class="sub-header">Discover what\'s really in your drink! 🔍</p>', unsafe_allow_html=True)
-
+    
     # Sidebar
     with st.sidebar:
         st.markdown("## 🛠️ Controls")
         
-        # API Status indicator
-        st.markdown("### 🌐 Backend Status")
-        if st.button("🔄 Check API Status"):
-            with st.spinner("Checking backend..."):
-                try:
-                    # Only check detection API status
-                    response = requests.post(API_URL, files={"file": ("test.jpg", b"test", "image/jpeg")}, timeout=10)
-                    if response.status_code == 200:
-                        st.success("✅ Detection API is responsive")
-                    else:
-                        st.warning(f"⚠️ Detection API returned status {response.status_code}")
-                except requests.exceptions.Timeout:
-                    st.error("❌ Detection API timeout - Backend may be slow")
-                except requests.exceptions.ConnectionError:
-                    st.error("❌ Connection failed - Backend may be down")
-                except Exception as e:
-                    st.error(f"❌ Error: {str(e)[:50]}...")
+        # Model upload/selection
+        st.markdown("### AI Model Setup")
+        uploaded_model = st.file_uploader("Upload your YOLO model (.pt file)", type=['pt'])
         
-        st.markdown("---")
+        model_path = None
+        if uploaded_model:
+            model_path = f"temp_model_{uploaded_model.name}"
+            with open(model_path, "wb") as f:
+                f.write(uploaded_model.read())
+        
+        # Settings
         st.markdown("### Detection Settings")
-        confidence_threshold = st.slider("Detection Confidence (for display only)", 0.1, 1.0, 0.6, 0.1)
+        confidence = st.slider("Detection Confidence", 0.1, 1.0, 0.6, 0.1)
+        
+        # Health Info Toggle
         show_health_info = st.checkbox("Show Health Warnings", True)
         show_comparisons = st.checkbox("Show Health Comparisons", True)
-        demo_mode = st.checkbox("Use Demo Mode (if API fails)", False)
         
         st.markdown("---")
         st.markdown("### 📊 Quick Stats")
@@ -659,16 +570,17 @@ def main():
             st.metric("Beverages in Database", len(NUTRITION_DATABASE))
             avg_sugar = np.mean([v['sugar_per_100ml'] for v in NUTRITION_DATABASE.values()])
             st.metric("Avg Sugar (per 100ml)", f"{avg_sugar:.1f}g")
-        else:
-            st.warning("Could not load nutrition database")
-
+    
+    # Initialize detector
+    detector = StreamlitBeverageDetector(model_path, confidence)
+    
     # Main content tabs
     tab1, tab2, tab3, tab4 = st.tabs(["📸 Scan Your Drink", "📊 Health Dashboard", "🧠 Learn More", "📈 Compare Beverages"])
-
+    
     with tab1:
         st.markdown("## Upload Your Beverage Photo")
-        col1, col2 = st.columns([2, 1])
         
+        col1, col2 = st.columns([2, 1])
         with col2:
             st.markdown("""
             <div class="info-box">
@@ -684,7 +596,7 @@ def main():
         
         with col1:
             uploaded_file = st.file_uploader(
-                "Choose an image...",
+                "Choose an image...", 
                 type=['jpg', 'jpeg', 'png', 'bmp'],
                 help="Upload a photo of your beverage"
             )
@@ -693,6 +605,7 @@ def main():
                 image = Image.open(uploaded_file)
                 st.image(image, caption="Your uploaded image", use_column_width=True, output_format="JPEG")
                 
+                # CSS to limit image height
                 st.markdown("""
                 <style>
                     img {
@@ -704,178 +617,232 @@ def main():
                     }
                 </style>
                 """, unsafe_allow_html=True)
-                
-                with st.spinner("🔍 Analyzing your beverage..."):
-                    if demo_mode:
-                        st.info("🎭 Demo mode enabled - Using sample detection")
-                        detections = create_demo_detection()
-                    else:
-                        detections = detect_via_api(image)
-                
-                if detections:
-                    st.success(f"🎉 Found {len(detections)} beverage(s)!")
-                    
-                    for i, detection in enumerate(detections):
-                        nutrition = detection['nutrition']
-                        confidence = detection['confidence']
-                        
-                        st.markdown(f"### 🥤 Detection #{i+1}: {nutrition['name']}")
-                        
-                        # Metrics row
-                        col1, col2, col3, col4 = st.columns(4)
-                        with col1:
-                            st.metric("Confidence", f"{confidence:.1%}")
-                        with col2:
-                            st.metric("Sugar", f"{nutrition['total_sugar_g']}g")
-                        with col3:
-                            st.metric("Calories", f"{nutrition['total_calories']}")
-                        with col4:
-                            st.metric("Caffeine", f"{nutrition['total_caffeine_mg']}mg")
-                        
-                        # Health warnings
-                        if show_health_info:
-                            if nutrition['total_sugar_g'] > 25:
-                                st.markdown(f"""
-                                <div class="warning-box">
-                                <h4>⚠️ High Sugar Alert!</h4>
-                                <p>This beverage contains <strong>{nutrition['total_sugar_g']}g</strong> of sugar, 
-                                which exceeds the WHO daily recommendation of 25g.</p>
-                                </div>
-                                """, unsafe_allow_html=True)
-                            elif nutrition['total_sugar_g'] == 0:
-                                st.markdown(f"""
-                                <div class="success-box">
-                                <h4>✅ Sugar-Free Choice!</h4>
-                                <p>Great choice! This beverage contains no sugar.</p>
-                                </div>
-                                """, unsafe_allow_html=True)
-                        
-                        # Health comparisons
-                        if show_comparisons:
-                            st.markdown(f"**Health Comparison:** {nutrition.get('comparison_message', 'No comparison available')}")
-                        
-                        # Nutrition chart
-                        fig = create_nutrition_chart(nutrition)
-                        st.plotly_chart(fig, use_container_width=True)
-                        
-                        st.markdown("---")
-                else:
-                    st.warning("No beverages detected. Please try another image.")
 
+                
+                if model_path and detector.load_model():
+                    with st.spinner("🔍 Analyzing your beverage..."):
+                        # Convert PIL to OpenCV format
+                        opencv_image = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
+                        detections = detector.detect_beverages(opencv_image)
+                    
+                    if detections:
+                        st.success(f"🎉 Found {len(detections)} beverage(s)!")
+                        
+                        for i, detection in enumerate(detections):
+                            nutrition = detection['nutrition']
+                            confidence = detection['confidence']
+                            
+                            st.markdown(f"### 🥤 Detection #{i+1}: {nutrition['name']}")
+                            
+                            # Create metrics columns
+                            col1, col2, col3, col4 = st.columns(4)
+                            
+                            with col1:
+                                st.metric("Confidence", f"{confidence:.1%}")
+                            with col2:
+                                st.metric("Sugar", f"{nutrition['total_sugar_g']}g")
+                            with col3:
+                                st.metric("Calories", f"{nutrition['total_calories']}")
+                            with col4:
+                                st.metric("Caffeine", f"{nutrition['total_caffeine_mg']}mg")
+                            
+                            # Health warnings
+                            if show_health_info:
+                                if nutrition['total_sugar_g'] > 25:
+                                    st.markdown(f"""
+                                    <div class="warning-box">
+                                    <h4>⚠️ High Sugar Alert!</h4>
+                                    <p>This beverage contains <strong>{nutrition['total_sugar_g']}g</strong> of sugar, 
+                                    which exceeds the WHO daily recommendation of 25g.</p>
+                                    </div>
+                                    """, unsafe_allow_html=True)
+                                elif nutrition['total_sugar_g'] == 0:
+                                    st.markdown(f"""
+                                    <div class="success-box">
+                                    <h4>✅ Sugar-Free Choice!</h4>
+                                    <p>Great choice! This beverage contains no sugar.</p>
+                                    </div>
+                                    """, unsafe_allow_html=True)
+                            
+                            if show_comparisons:
+                                st.markdown(f"**Health Comparison:** {nutrition['comparison_message']}")
+                            
+                            # Create a nutrition chart
+                            fig = go.Figure()
+                            fig.add_trace(go.Bar(
+                                x=['Sugar (g)', 'Calories', 'Caffeine (mg)'],
+                                y=[nutrition['total_sugar_g'], nutrition['total_calories'], nutrition['total_caffeine_mg']],
+                                marker_color=['#FF6B6B', '#4ECDC4', '#45B7D1']
+                            ))
+                            fig.update_layout(
+                                title=f"Nutritional Content - {nutrition['name']}",
+                                yaxis_title="Amount",
+                                height=400
+                            )
+                            st.plotly_chart(fig, use_container_width=True)
+                    else:
+                        st.warning("🤔 No beverages detected. Try uploading a clearer image or check if your beverage is in our database.")
+                else:
+                    st.error("❌ Please upload a valid YOLO model file (.pt) in the sidebar to start detection.")
+    
     with tab2:
         st.markdown("## 📊 Health Dashboard")
-        st.markdown("Explore nutrition insights from our beverage database")
-        create_health_dashboard()
-
+        
+        if len(NUTRITION_DATABASE) > 0:
+            # Create DataFrame for analysis
+            df_data = []
+            for key, value in NUTRITION_DATABASE.items():
+                df_data.append({
+                    'Name': value['name'],
+                    'Sugar (g/100ml)': value['sugar_per_100ml'],
+                    'Calories (per 100ml)': value['calories_per_100ml'],
+                    'Caffeine (mg/100ml)': value['caffeine_per_100ml'],
+                    'Volume (ml)': value['typical_volume']
+                })
+            
+            df = pd.DataFrame(df_data)
+            
+            # Sugar content distribution
+            fig1 = px.histogram(df, x='Sugar (g/100ml)', nbins=15, 
+                              title="Sugar Content Distribution Across Beverages")
+            fig1.update_layout(height=400)
+            st.plotly_chart(fig1, use_container_width=True)
+            
+            # Top 10 highest sugar beverages
+            top_sugar = df.nlargest(10, 'Sugar (g/100ml)')
+            fig2 = px.bar(top_sugar, x='Sugar (g/100ml)', y='Name', orientation='h',
+                         title="Top 10 Highest Sugar Beverages (per 100ml)")
+            fig2.update_layout(height=500)
+            st.plotly_chart(fig2, use_container_width=True)
+            
+            # Caffeine vs Sugar scatter plot
+            fig3 = px.scatter(df, x='Sugar (g/100ml)', y='Caffeine (mg/100ml)', 
+                             hover_name='Name', title="Caffeine vs Sugar Content")
+            fig3.update_layout(height=400)
+            st.plotly_chart(fig3, use_container_width=True)
+    
     with tab3:
-        st.markdown("## 🧠 Learn More About Beverage Health")
+        st.markdown("## 🧠 Learn About Beverage Health")
         
         col1, col2 = st.columns(2)
         
         with col1:
             st.markdown("""
-            <div class="info-box">
-            <h4>🍬 Sugar Content Guidelines</h4>
-            <ul>
-            <li><strong>WHO Recommendation:</strong> Max 25g per day</li>
-            <li><strong>Low Sugar:</strong> 0-5g per serving</li>
-            <li><strong>Medium Sugar:</strong> 5-15g per serving</li>
-            <li><strong>High Sugar:</strong> 15g+ per serving</li>
-            </ul>
-            </div>
-            """, unsafe_allow_html=True)
+            ### 🍬 Sugar Facts
+            
+            **Daily Recommendations:**
+            - Adults: Maximum 25g per day (WHO)
+            - Children: Maximum 19g per day
+            
+            **Health Impacts:**
+            - Weight gain and obesity
+            - Tooth decay
+            - Increased diabetes risk
+            - Energy crashes
+            
+            **Hidden Sugars:**
+            Many beverages contain more sugar than you think!
+            A 330ml cola can contain up to 39g of sugar.
+            """)
         
         with col2:
             st.markdown("""
-            <div class="info-box">
-            <h4>☕ Caffeine Guidelines</h4>
-            <ul>
-            <li><strong>Safe Daily Limit:</strong> 400mg for adults</li>
-            <li><strong>Low Caffeine:</strong> 0-50mg</li>
-            <li><strong>Medium Caffeine:</strong> 50-100mg</li>
-            <li><strong>High Caffeine:</strong> 100mg+</li>
-            </ul>
-            </div>
-            """, unsafe_allow_html=True)
+            ### ☕ Caffeine Facts
+            
+            **Daily Safe Limits:**
+            - Adults: Up to 400mg per day
+            - Pregnant women: Up to 200mg per day
+            - Teenagers: Up to 100mg per day
+            
+            **Effects:**
+            - Increased alertness
+            - Improved focus
+            - Can cause jitters if too much
+            - May affect sleep
+            
+            **Sources:**
+            Coffee, tea, energy drinks, some sodas
+            """)
         
         st.markdown("""
-        ### 💡 Health Tips
+        ### 🌟 Healthy Alternatives
         
-        **Choose Wisely:**
-        - Water is always the best choice for hydration
-        - Look for beverages with natural ingredients
-        - Check nutrition labels for hidden sugars
-        - Consider portion sizes when calculating daily intake
-        
-        **Moderation is Key:**
-        - Enjoy treats occasionally, not daily
-        - Balance high-sugar drinks with physical activity
-        - Consider sugar-free alternatives when available
+        **Instead of sugary drinks, try:**
+        - Water with lemon or cucumber
+        - Unsweetened tea
+        - Sparkling water with natural flavors
+        - Fresh fruit juices (in moderation)
+        - Coconut water
         """)
-
+    
     with tab4:
         st.markdown("## 📈 Compare Beverages")
         
-        if NUTRITION_DATABASE:
-            # Beverage selection
-            col1, col2 = st.columns(2)
+        if len(NUTRITION_DATABASE) > 0:
+            # Beverage selector
+            available_beverages = [v['name'] for v in NUTRITION_DATABASE.values()]
+            selected_beverages = st.multiselect(
+                "Select beverages to compare (up to 5):",
+                available_beverages,
+                default=available_beverages[:3] if len(available_beverages) >= 3 else available_beverages
+            )
             
-            beverage_names = list(NUTRITION_DATABASE.keys())
-            
-            with col1:
-                beverage1 = st.selectbox("Select first beverage:", beverage_names, key="bev1")
-            with col2:
-                beverage2 = st.selectbox("Select second beverage:", beverage_names, key="bev2")
-            
-            if beverage1 and beverage2 and beverage1 != beverage2:
-                # Get nutrition data
-                data1 = NUTRITION_DATABASE[beverage1]
-                data2 = NUTRITION_DATABASE[beverage2]
+            if selected_beverages:
+                # Create comparison data
+                comparison_data = []
+                for bev_name in selected_beverages:
+                    for key, value in NUTRITION_DATABASE.items():
+                        if value['name'] == bev_name:
+                            comparison_data.append({
+                                'Beverage': bev_name,
+                                'Sugar (g/100ml)': value['sugar_per_100ml'],
+                                'Calories (per 100ml)': value['calories_per_100ml'],
+                                'Caffeine (mg/100ml)': value['caffeine_per_100ml']
+                            })
+                            break
                 
-                # Comparison metrics
-                st.markdown("### Nutrition Comparison (per 100ml)")
+                df_comparison = pd.DataFrame(comparison_data)
                 
-                col1, col2, col3 = st.columns(3)
+                # Display comparison table
+                st.markdown("### 📋 Nutritional Comparison")
+                st.dataframe(df_comparison, use_container_width=True)
                 
-                with col1:
-                    st.metric(
-                        "Sugar (g)",
-                        f"{data1['sugar_per_100ml']}g vs {data2['sugar_per_100ml']}g",
-                        delta=data1['sugar_per_100ml'] - data2['sugar_per_100ml']
-                    )
-                
-                with col2:
-                    st.metric(
-                        "Calories",
-                        f"{data1['calories_per_100ml']} vs {data2['calories_per_100ml']}",
-                        delta=data1['calories_per_100ml'] - data2['calories_per_100ml']
-                    )
-                
-                with col3:
-                    st.metric(
-                        "Caffeine (mg)",
-                        f"{data1['caffeine_per_100ml']}mg vs {data2['caffeine_per_100ml']}mg",
-                        delta=data1['caffeine_per_100ml'] - data2['caffeine_per_100ml']
-                    )
-                
-                # Comparison chart
-                comparison_data = pd.DataFrame({
-                    'Metric': ['Sugar (g)', 'Calories', 'Caffeine (mg)'],
-                    beverage1: [data1['sugar_per_100ml'], data1['calories_per_100ml'], data1['caffeine_per_100ml']],
-                    beverage2: [data2['sugar_per_100ml'], data2['calories_per_100ml'], data2['caffeine_per_100ml']]
-                })
-                
-                fig = px.bar(
-                    comparison_data,
-                    x='Metric',
-                    y=[beverage1, beverage2],
-                    title=f"Nutrition Comparison: {beverage1} vs {beverage2}",
-                    barmode='group'
+                # Create comparison charts
+                fig = make_subplots(
+                    rows=1, cols=3,
+                    subplot_titles=('Sugar Content', 'Calories', 'Caffeine'),
+                    specs=[[{"type": "bar"}, {"type": "bar"}, {"type": "bar"}]]
                 )
                 
+                fig.add_trace(
+                    go.Bar(x=df_comparison['Beverage'], y=df_comparison['Sugar (g/100ml)'], 
+                           name='Sugar', marker_color='#FF6B6B'),
+                    row=1, col=1
+                )
+                
+                fig.add_trace(
+                    go.Bar(x=df_comparison['Beverage'], y=df_comparison['Calories (per 100ml)'], 
+                           name='Calories', marker_color='#4ECDC4'),
+                    row=1, col=2
+                )
+                
+                fig.add_trace(
+                    go.Bar(x=df_comparison['Beverage'], y=df_comparison['Caffeine (mg/100ml)'], 
+                           name='Caffeine', marker_color='#45B7D1'),
+                    row=1, col=3
+                )
+                
+                fig.update_layout(height=500, showlegend=False)
                 st.plotly_chart(fig, use_container_width=True)
-        else:
-            st.warning("No nutrition database available for comparison")
+    
+    # Footer
+    st.markdown("---")
+    st.markdown("""
+    <div style="text-align: center; color: #666; padding: 2rem;">
+    <p>🥤 Smart Beverage Health Scanner - Make informed choices about what you drink!</p>
+    <p>Remember: This tool is for educational purposes. Always consult healthcare professionals for personalized advice.</p>
+    </div>
+    """, unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()
