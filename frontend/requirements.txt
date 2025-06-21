@@ -1,3 +1,9 @@
+fastapi
+uvicorn
+pillow
+numpy
+ultralytics
+opencv-python-headless
 streamlit
 opencv-python
 torch
@@ -7,3 +13,5 @@ ultralytics
 plotly
 pandas
 requests
+Pillow
+plotly

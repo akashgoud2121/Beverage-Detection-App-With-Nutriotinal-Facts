@@ -18,6 +18,7 @@ from pathlib import Path
 import io
 import base64
 
+<<<<<<< HEAD
 # Sample images for testing (base64 encoded or you can upload them to your app)
 image_dir = r"C:\Users\user\OneDrive\Desktop\Smart Beverage Health Scanner\Sample_Images"
 SAMPLE_IMAGES = {
@@ -91,6 +92,8 @@ class AutoModelLoader:
         except Exception:
             return False
 
+=======
+>>>>>>> 808dc8cc3c9b23fb8105c49a4e9a2769880bb54b
 # Page configuration
 st.set_page_config(
     page_title="🥤 Smart Beverage Health Scanner",
@@ -144,6 +147,7 @@ st.markdown("""
         text-align: center;
         margin: 0.5rem 0;
     }
+<<<<<<< HEAD
     
     /* Fixed sample image gallery styling */
     .sample-gallery {
@@ -217,6 +221,50 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # [NUTRITION_DATABASE would be inserted here - keeping it out as requested]
+=======
+
+    /* Dark mode overrides */
+/* Dark mode compatibility */
+body[data-theme="dark"] .info-box {
+    background-color: #1e3a8a;  /* Darker blue */
+    color: #e0f2fe;
+    border-left: 5px solid #60a5fa;
+}
+
+body[data-theme="dark"] .warning-box {
+    background-color: #7f1d1d;
+    color: #fca5a5;
+    border-left: 5px solid #ef4444;
+}
+
+body[data-theme="dark"] .success-box {
+    background-color: #14532d;
+    color: #bbf7d0;
+    border-left: 5px solid #22c55e;
+}
+
+/* Dark mode compatibility for the tips box */
+body[data-theme="dark"] .main-header {
+    color: #e5e5e5;
+}
+
+/* List items in dark mode */
+body[data-theme="dark"] ul {
+    color: #e5e5e5;
+}
+
+/* Make sure the tips box has a darker background in dark mode */
+body[data-theme="dark"] .info-box ul li {
+    color: #e5e5e5;
+    font-weight: normal;
+}
+
+</style>
+""", unsafe_allow_html=True)
+
+
+# Nutrition Database (same as your original)
+>>>>>>> 808dc8cc3c9b23fb8105c49a4e9a2769880bb54b
 NUTRITION_DATABASE = {
     "pepsi": {
         "name": "Pepsi Cola",
@@ -570,6 +618,10 @@ NUTRITION_DATABASE = {
         "health_warning": "Moderate sugar content"
     }
 }
+<<<<<<< HEAD
+=======
+
+>>>>>>> 808dc8cc3c9b23fb8105c49a4e9a2769880bb54b
 class StreamlitBeverageDetector:
     def __init__(self, model_path=None, confidence_threshold=0.5):
         self.model_path = model_path
@@ -579,6 +631,7 @@ class StreamlitBeverageDetector:
     def load_model(self):
         if self.model_path and os.path.exists(self.model_path):
             try:
+<<<<<<< HEAD
                 # Fixed: Better error handling and validation
                 self.model = YOLO(self.model_path)
                 # Test the model with a dummy prediction to ensure it works
@@ -590,10 +643,17 @@ class StreamlitBeverageDetector:
                 # Additional debugging info
                 if "invalid load key" in str(e):
                     st.error("The model file appears to be corrupted or not a valid PyTorch model file.")
+=======
+                self.model = YOLO(self.model_path)
+                return True
+            except Exception as e:
+                st.error(f"Error loading model: {str(e)}")
+>>>>>>> 808dc8cc3c9b23fb8105c49a4e9a2769880bb54b
                 return False
         return False
     
     def get_nutrition_info(self, class_name, volume=None):
+<<<<<<< HEAD
     # Search for the class_name in the NUTRITION_DATABASE
         beverage = NUTRITION_DATABASE.get(class_name.lower().replace(" ", "_"), None)
         
@@ -615,11 +675,43 @@ class StreamlitBeverageDetector:
             # If not found, return None or placeholder
             return None
 
+=======
+        clean_name = class_name.lower().strip()
+        if clean_name in NUTRITION_DATABASE:
+            data = NUTRITION_DATABASE[clean_name]
+            if volume is None:
+                volume = data['typical_volume']
+            
+            sugar_g = round((data['sugar_per_100ml'] * volume) / 100, 1)
+            sugar_grams_daily_limit = 25
+            
+            comparison_message = ""
+            if sugar_g <= sugar_grams_daily_limit:
+                comparison_message = f"✅ Within daily sugar limit"
+            else:
+                excess = sugar_g - sugar_grams_daily_limit
+                comparison_message = f"⚠️ Exceeds daily limit by {excess}g"
+            
+            return {
+                "name": data['name'],
+                "volume_ml": volume,
+                "total_sugar_g": sugar_g,
+                "total_calories": round((data['calories_per_100ml'] * volume) / 100),
+                "total_caffeine_mg": round((data['caffeine_per_100ml'] * volume) / 100, 1),
+                "health_warning": data.get('health_warning', ''),
+                "comparison_message": comparison_message,
+                "sugar_per_100ml": data['sugar_per_100ml'],
+                "calories_per_100ml": data['calories_per_100ml'],
+                "caffeine_per_100ml": data['caffeine_per_100ml']
+            }
+        return None
+>>>>>>> 808dc8cc3c9b23fb8105c49a4e9a2769880bb54b
     
     def detect_beverages(self, image):
         if self.model is None:
             return []
         
+<<<<<<< HEAD
         try:
             results = self.model(image, conf=self.confidence_threshold, verbose=False)
             detections = []
@@ -678,6 +770,30 @@ def create_sample_image_gallery():
                         
                 except Exception as e:
                     st.error(f"Error loading {name}: {str(e)}")
+=======
+        results = self.model(image, conf=self.confidence_threshold)
+        detections = []
+        
+        for result in results:
+            boxes = result.boxes
+            if boxes is not None:
+                for box in boxes:
+                    x1, y1, x2, y2 = box.xyxy[0].cpu().numpy().astype(int)
+                    confidence = float(box.conf[0].cpu().numpy())
+                    class_id = int(box.cls[0].cpu().numpy())
+                    class_name = self.model.names[class_id]
+                    
+                    nutrition = self.get_nutrition_info(class_name)
+                    if nutrition:
+                        detections.append({
+                            'bbox': (x1, y1, x2, y2),
+                            'confidence': confidence,
+                            'class_name': class_name,
+                            'nutrition': nutrition
+                        })
+        
+        return detections
+>>>>>>> 808dc8cc3c9b23fb8105c49a4e9a2769880bb54b
 
 def main():
     # Initialize session state
@@ -694,6 +810,7 @@ def main():
     with st.sidebar:
         st.markdown("## 🛠️ Controls")
         
+<<<<<<< HEAD
         # Auto model loader
         auto_loader = AutoModelLoader()
         
@@ -714,10 +831,18 @@ def main():
         st.markdown("**Or upload your own model:**")
         uploaded_model = st.file_uploader("Upload YOLO model (.pt file)", type=['pt'])
         
+=======
+        # Model upload/selection
+        st.markdown("### AI Model Setup")
+        uploaded_model = st.file_uploader("Upload your YOLO model (.pt file)", type=['pt'])
+        
+        model_path = None
+>>>>>>> 808dc8cc3c9b23fb8105c49a4e9a2769880bb54b
         if uploaded_model:
             model_path = f"temp_model_{uploaded_model.name}"
             with open(model_path, "wb") as f:
                 f.write(uploaded_model.read())
+<<<<<<< HEAD
             
             # Validate uploaded model
             if auto_loader.validate_model_file(model_path):
@@ -726,6 +851,8 @@ def main():
             else:
                 st.error("❌ Invalid model file uploaded")
                 os.remove(model_path)
+=======
+>>>>>>> 808dc8cc3c9b23fb8105c49a4e9a2769880bb54b
         
         # Settings
         st.markdown("### Detection Settings")
@@ -737,12 +864,19 @@ def main():
         
         st.markdown("---")
         st.markdown("### 📊 Quick Stats")
+<<<<<<< HEAD
         # Placeholder stats (would use NUTRITION_DATABASE)
         st.metric("Beverages in Database", "50+")
         st.metric("Avg Sugar (per 100ml)", "8.5g")
     
     # Get model path from session state
     model_path = st.session_state.get('model_path', None)
+=======
+        if len(NUTRITION_DATABASE) > 0:
+            st.metric("Beverages in Database", len(NUTRITION_DATABASE))
+            avg_sugar = np.mean([v['sugar_per_100ml'] for v in NUTRITION_DATABASE.values()])
+            st.metric("Avg Sugar (per 100ml)", f"{avg_sugar:.1f}g")
+>>>>>>> 808dc8cc3c9b23fb8105c49a4e9a2769880bb54b
     
     # Initialize detector
     detector = StreamlitBeverageDetector(model_path, confidence)
@@ -751,6 +885,7 @@ def main():
     tab1, tab2, tab3, tab4 = st.tabs(["📸 Scan Your Drink", "📊 Health Dashboard", "🧠 Learn More", "📈 Compare Beverages"])
     
     with tab1:
+<<<<<<< HEAD
         if st.session_state.get('model_path'):
             st.markdown("## Upload Your Beverage Photo")
             
@@ -761,6 +896,9 @@ def main():
             st.markdown("## Or Upload Your Own Image")
         else:
             st.info("👈 Click 'Quick Start' in the sidebar to begin!")
+=======
+        st.markdown("## Upload Your Beverage Photo")
+>>>>>>> 808dc8cc3c9b23fb8105c49a4e9a2769880bb54b
         
         col1, col2 = st.columns([2, 1])
         with col2:
@@ -794,6 +932,7 @@ def main():
             
             if uploaded_file is not None:
                 image = Image.open(uploaded_file)
+<<<<<<< HEAD
                 image_source = "Uploaded file"
                 # Clear sample selection when new file is uploaded
                 st.session_state.selected_sample = None
@@ -803,6 +942,24 @@ def main():
                 st.image(image, caption=f"Your image ({image_source})")
 
                 # Use the model_path variable we defined earlier
+=======
+                st.image(image, caption="Your uploaded image", use_column_width=True, output_format="JPEG")
+                
+                # CSS to limit image height
+                st.markdown("""
+                <style>
+                    img {
+                        max-height: 400px !important;
+                        object-fit: contain !important;
+                        display: block;
+                        margin-left: auto;
+                        margin-right: auto;
+                    }
+                </style>
+                """, unsafe_allow_html=True)
+
+                
+>>>>>>> 808dc8cc3c9b23fb8105c49a4e9a2769880bb54b
                 if model_path and detector.load_model():
                     with st.spinner("🔍 Analyzing your beverage..."):
                         # Convert PIL to OpenCV format

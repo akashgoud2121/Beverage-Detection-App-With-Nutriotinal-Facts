@@ -9,7 +9,11 @@ import numpy as np
 import cv2
 import os
 
+<<<<<<< HEAD
 from .detector import StreamlitBeverageDetector, NUTRITION_DATABASE
+=======
+from .detector import StreamlitBeverageDetector
+>>>>>>> 808dc8cc3c9b23fb8105c49a4e9a2769880bb54b
 
 app = FastAPI()
 
