@@ -118,14 +118,14 @@ st.markdown("""
         border-radius: 5px;
     }
     .success-box {
-        background-color: #E5F7E5;
+        background-color: #00420C;
         border-left: 5px solid #4CAF50;
         padding: 1rem;
         margin: 1rem 0;
         border-radius: 5px;
     }
     .info-box {
-        background-color: #132624;
+        background-color: #070FF0;
         border-left: 5px solid #2196F3;
         padding: 1rem;
         margin: 1rem 0;
