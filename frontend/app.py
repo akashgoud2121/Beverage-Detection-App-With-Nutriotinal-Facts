@@ -268,7 +268,7 @@ def main():
             
             if uploaded_file is not None:
                 image = Image.open(uploaded_file)
-                st.image(image, caption="Your uploaded image", use_column_width=True, output_format="JPEG")
+                st.image(image, caption="Your uploaded image", use_container_width=True, output_format="JPEG")
                 
                 st.markdown("""
                 <style>
