@@ -9,8 +9,7 @@ from plotly.subplots import make_subplots
 import pandas as pd
 
 # API endpoints - FIXED
-API_URL = "https://beverage-detection-backend.onrender.com/detect"  # Added /detect
-NUTRITION_DB_URL = "https://beverage-detection-backend.onrender.com/nutrition_database"  # Added /nutrition_database
+API_URL = "https://beverage-detection-backend.onrender.com/detect"  # Only detection endpoint needed
 
 # Page configuration
 st.set_page_config(
@@ -94,75 +93,391 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # Fallback nutrition database in case API is not available
-FALLBACK_NUTRITION_DATABASE = {
-    "Coca-Cola": {
-        "sugar_per_100ml": 10.6,
+NUTRITION_DATABASE = {
+    "pepsi": {
+        "name": "Pepsi Cola",
+        "sugar_per_100ml": 11.0,
         "calories_per_100ml": 42,
-        "caffeine_per_100ml": 10.4
+        "caffeine_per_100ml": 10.4,
+        "typical_volume": 330,
+        "color": (255, 0, 0),
+        "health_warning": "High sugar content"
     },
-    "Pepsi": {
+    "7up_320ml": {
+        "name": "7up 320ml",
+        "sugar_per_100ml": 10.5,
+        "calories_per_100ml": 40,
+        "caffeine_per_100ml": 0,
+        "typical_volume": 320,
+        "color": (0, 255, 0),
+        "health_warning": "Contains high sugar"
+    },
+   "7up_c1_5l": {
+        "name": "7up 1.5L",
+        "sugar_per_100ml": 9.8,
+        "calories_per_100ml": 38,
+        "caffeine_per_100ml": 0,
+        "typical_volume": 1500,
+        "color": (0, 255, 0),
+        "health_warning": "Contains high sugar"
+    },
+    "7up_c390ml": {
+        "name": "7up 390ml",
+        "sugar_per_100ml": 10.3,
+        "calories_per_100ml": 39,
+        "caffeine_per_100ml": 0,
+        "typical_volume": 390,
+        "color": (0, 255, 0),
+        "health_warning": "Contains high sugar"
+    },
+    "7up_chat_xo_320ml": {
+        "name": "7up Chat XO 320ml",
+        "sugar_per_100ml": 10.8,
+        "calories_per_100ml": 41,
+        "caffeine_per_100ml": 0,
+        "typical_volume": 320,
+        "color": (0, 255, 0),
+        "health_warning": "Contains high sugar"
+    },
+    "boss_180ml": {
+        "name": "Boss 180ml",
+        "sugar_per_100ml": 9.5,
+        "calories_per_100ml": 37,
+        "caffeine_per_100ml": 30.0,
+        "typical_volume": 180,
+        "color": (255, 165, 0),
+        "health_warning": "Energy drink - High caffeine"
+    },
+    "lipton_c450ml": {
+        "name": "Lipton Ice Tea 450ml",
+        "sugar_per_100ml": 7.8,
+        "calories_per_100ml": 30,
+        "caffeine_per_100ml": 8.0,
+        "typical_volume": 450,
+        "color": (255, 215, 0),
+        "health_warning": "Moderate sugar content"
+    },
+    "mirinda_cam_320ml": {
+        "name": "Mirinda Cam 320ml",
+        "sugar_per_100ml": 11.2,
+        "calories_per_100ml": 45,
+        "caffeine_per_100ml": 0,
+        "typical_volume": 320,
+        "color": (0, 165, 255),
+        "health_warning": "High sugar, no caffeine"
+    },
+    "mirinda_cam_c1_5l": {
+        "name": "Mirinda Cam 1.5L",
+        "sugar_per_100ml": 10.9,
+        "calories_per_100ml": 44,
+        "caffeine_per_100ml": 0,
+        "typical_volume": 1500,
+        "color": (0, 165, 255),
+        "health_warning": "High sugar, no caffeine"
+    },
+    "mirinda_cam_c390ml": {
+        "name": "Mirinda Cam 390ml",
         "sugar_per_100ml": 11.0,
         "calories_per_100ml": 43,
-        "caffeine_per_100ml": 10.1
+        "caffeine_per_100ml": 0,
+        "typical_volume": 390,
+        "color": (0, 165, 255),
+        "health_warning": "High sugar, no caffeine"
     },
-    "Sprite": {
-        "sugar_per_100ml": 9.0,
-        "calories_per_100ml": 37,
-        "caffeine_per_100ml": 0
+    "mirinda_soda_kem_320ml": {
+        "name": "Mirinda Soda Kem 320ml",
+        "sugar_per_100ml": 11.5,
+        "calories_per_100ml": 46,
+        "caffeine_per_100ml": 0,
+        "typical_volume": 320,
+        "color": (0, 165, 255),
+        "health_warning": "High sugar, no caffeine"
     },
-    "Red Bull": {
+    "mirinda_soda_kem_c1_5l": {
+        "name": "Mirinda Soda Kem 1.5L",
+        "sugar_per_100ml": 10.8,
+        "calories_per_100ml": 45,
+        "caffeine_per_100ml": 0,
+        "typical_volume": 1500,
+        "color": (0, 165, 255),
+        "health_warning": "High sugar, no caffeine"
+    },
+    "mirinda_soda_kem_c390ml": {
+        "name": "Mirinda Soda Kem 390ml",
+        "sugar_per_100ml": 11.1,
+        "calories_per_100ml": 44,
+        "caffeine_per_100ml": 0,
+        "typical_volume": 390,
+        "color": (0, 165, 255),
+        "health_warning": "High sugar, no caffeine"
+    },
+    "mirinda_viet_quat_320ml": {
+        "name": "Mirinda Viet Quat 320ml",
+        "sugar_per_100ml": 11.2,
+        "calories_per_100ml": 45,
+        "caffeine_per_100ml": 0,
+        "typical_volume": 320,
+        "color": (255, 140, 0),
+        "health_warning": "High sugar, no caffeine"
+    },
+    "mirinda_viet_quat_c390ml": {
+        "name": "Mirinda Viet Quat 390ml",
+        "sugar_per_100ml": 10.9,
+        "calories_per_100ml": 44,
+        "caffeine_per_100ml": 0,
+        "typical_volume": 390,
+        "color": (255, 140, 0),
+        "health_warning": "High sugar, no caffeine"
+    },
+    "mirinda_xa_xi_320ml": {
+        "name": "Mirinda Xa Xi 320ml",
+        "sugar_per_100ml": 11.3,
+        "calories_per_100ml": 46,
+        "caffeine_per_100ml": 0,
+        "typical_volume": 320,
+        "color": (255, 140, 0),
+        "health_warning": "High sugar, no caffeine"
+    },
+    "mirinda_xa_xi_c390ml": {
+        "name": "Mirinda Xa Xi 390ml",
         "sugar_per_100ml": 11.0,
         "calories_per_100ml": 45,
-        "caffeine_per_100ml": 80
+        "caffeine_per_100ml": 0,
+        "typical_volume": 390,
+        "color": (255, 140, 0),
+        "health_warning": "High sugar, no caffeine"
     },
-    "Monster Energy": {
-        "sugar_per_100ml": 11.0,
-        "calories_per_100ml": 47,
-        "caffeine_per_100ml": 86
+    "olong_tea_plus_320ml": {
+        "name": "Olong Tea Plus 320ml",
+        "sugar_per_100ml": 7.0,
+        "calories_per_100ml": 30,
+        "caffeine_per_100ml": 8.0,
+        "typical_volume": 320,
+        "color": (255, 165, 0),
+        "health_warning": "Moderate sugar, contains caffeine"
     },
-    "Orange Juice": {
-        "sugar_per_100ml": 8.4,
-        "calories_per_100ml": 36,
-        "caffeine_per_100ml": 0
+    "olong_tea_plus_c1l": {
+        "name": "Olong Tea Plus 1L",
+        "sugar_per_100ml": 6.5,
+        "calories_per_100ml": 28,
+        "caffeine_per_100ml": 7.5,
+        "typical_volume": 1000,
+        "color": (255, 165, 0),
+        "health_warning": "Moderate sugar, contains caffeine"
     },
-    "Apple Juice": {
-        "sugar_per_100ml": 10.0,
-        "calories_per_100ml": 46,
-        "caffeine_per_100ml": 0
+    "olong_tea_plus_c450ml": {
+        "name": "Olong Tea Plus 450ml",
+        "sugar_per_100ml": 7.3,
+        "calories_per_100ml": 31,
+        "caffeine_per_100ml": 8.2,
+        "typical_volume": 450,
+        "color": (255, 165, 0),
+        "health_warning": "Moderate sugar, contains caffeine"
     },
-    "Water": {
+    "olong_tea_plus_chanh_c450ml": {
+        "name": "Olong Tea Plus Chan 450ml",
+        "sugar_per_100ml": 7.5,
+        "calories_per_100ml": 32,
+        "caffeine_per_100ml": 8.5,
+        "typical_volume": 450,
+        "color": (255, 165, 0),
+        "health_warning": "Moderate sugar, contains caffeine"
+    },
+    "olong_tea_plus_zero_c450ml": {
+        "name": "Olong Tea Plus Zero 450ml",
         "sugar_per_100ml": 0,
         "calories_per_100ml": 0,
-        "caffeine_per_100ml": 0
+        "caffeine_per_100ml": 9.0,
+        "typical_volume": 450,
+        "color": (255, 165, 0),
+        "health_warning": "Zero sugar, contains caffeine"
+    },
+    "pepsi_320ml": {
+        "name": "Pepsi 320ml",
+        "sugar_per_100ml": 11.0,
+        "calories_per_100ml": 42,
+        "caffeine_per_100ml": 10.4,
+        "typical_volume": 320,
+        "color": (255, 0, 0),
+        "health_warning": "High sugar content"
+    },
+    "pepsi_c1_5l": {
+        "name": "Pepsi 1.5L",
+        "sugar_per_100ml": 10.9,
+        "calories_per_100ml": 41,
+        "caffeine_per_100ml": 10.2,
+        "typical_volume": 1500,
+        "color": (255, 0, 0),
+        "health_warning": "High sugar content"
+    },
+    "pepsi_c390ml": {
+        "name": "Pepsi 390ml",
+        "sugar_per_100ml": 11.1,
+        "calories_per_100ml": 42,
+        "caffeine_per_100ml": 10.4,
+        "typical_volume": 390,
+        "color": (255, 0, 0),
+        "health_warning": "High sugar content"
+    },
+    "pepsi_zero_320ml": {
+        "name": "Pepsi Zero 320ml",
+        "sugar_per_100ml": 0,
+        "calories_per_100ml": 0,
+        "caffeine_per_100ml": 10.5,
+        "typical_volume": 320,
+        "color": (0, 0, 0),
+        "health_warning": "Zero sugar"
+    },
+    "pepsi_zero_chanh_320ml": {
+        "name": "Pepsi Zero Chan 320ml",
+        "sugar_per_100ml": 0,
+        "calories_per_100ml": 0,
+        "caffeine_per_100ml": 10.4,
+        "typical_volume": 320,
+        "color": (0, 0, 0),
+        "health_warning": "Zero sugar"
+    },
+    "pepsi_zero_chanh_c390ml": {
+        "name": "Pepsi Zero Chan 390ml",
+        "sugar_per_100ml": 0,
+        "calories_per_100ml": 0,
+        "caffeine_per_100ml": 10.5,
+        "typical_volume": 390,
+        "color": (0, 0, 0),
+        "health_warning": "Zero sugar"
+    },
+    "rockstar_250ml": {
+        "name": "Rockstar 250ml",
+        "sugar_per_100ml": 11.5,
+        "calories_per_100ml": 45,
+        "caffeine_per_100ml": 32.0,
+        "typical_volume": 250,
+        "color": (255, 215, 0),
+        "health_warning": "High caffeine"
+    },
+    "sting_do_320ml": {
+        "name": "Sting Do 320ml",
+        "sugar_per_100ml": 12.0,
+        "calories_per_100ml": 48,
+        "caffeine_per_100ml": 30.0,
+        "typical_volume": 320,
+        "color": (255, 0, 255),
+        "health_warning": "High caffeine & sugar"
+    },
+    "sting_do_c330ml": {
+        "name": "Sting Do 330ml",
+        "sugar_per_100ml": 12.1,
+        "calories_per_100ml": 49,
+        "caffeine_per_100ml": 31.0,
+        "typical_volume": 330,
+        "color": (255, 0, 255),
+        "health_warning": "High caffeine & sugar"
+    },
+    "sting_vang_320ml": {
+        "name": "Sting Vang 320ml",
+        "sugar_per_100ml": 12.3,
+        "calories_per_100ml": 50,
+        "caffeine_per_100ml": 30.0,
+        "typical_volume": 320,
+        "color": (255, 0, 255),
+        "health_warning": "High caffeine & sugar"
+    },
+    "sting_vang_c330ml": {
+        "name": "Sting Vang 330ml",
+        "sugar_per_100ml": 12.5,
+        "calories_per_100ml": 52,
+        "caffeine_per_100ml": 31.0,
+        "typical_volume": 330,
+        "color": (255, 0, 255),
+        "health_warning": "High caffeine & sugar"
+    },
+    "twister_c450ml": {
+        "name": "Twister 450ml",
+        "sugar_per_100ml": 9.0,
+        "calories_per_100ml": 36,
+        "caffeine_per_100ml": 0,
+        "typical_volume": 450,
+        "color": (0, 255, 255),
+        "health_warning": "Moderate sugar content"
+    },
+    "twister_cam_320ml": {
+        "name": "Twister Cam 320ml",
+        "sugar_per_100ml": 9.3,
+        "calories_per_100ml": 37,
+        "caffeine_per_100ml": 0,
+        "typical_volume": 320,
+        "color": (0, 255, 255),
+        "health_warning": "Moderate sugar content"
+    },
+    "twister_cam_c1l": {
+        "name": "Twister Cam 1L",
+        "sugar_per_100ml": 9.0,
+        "calories_per_100ml": 36,
+        "caffeine_per_100ml": 0,
+        "typical_volume": 1000,
+        "color": (0, 255, 255),
+        "health_warning": "Moderate sugar content"
+    },
+    "twister_cam_c320ml": {
+        "name": "Twister Cam 320ml",
+        "sugar_per_100ml": 9.4,
+        "calories_per_100ml": 38,
+        "caffeine_per_100ml": 0,
+        "typical_volume": 320,
+        "color": (0, 255, 255),
+        "health_warning": "Moderate sugar content"
+    },
+    "twister_sua_cam_c290ml": {
+        "name": "Twister Sua Cam 290ml",
+        "sugar_per_100ml": 8.5,
+        "calories_per_100ml": 34,
+        "caffeine_per_100ml": 0,
+        "typical_volume": 290,
+        "color": (255, 255, 0),
+        "health_warning": "Moderate sugar content"
+    },
+    "twister_sua_dau_c290ml": {
+        "name": "Twister Sua Dau 290ml",
+        "sugar_per_100ml": 8.7,
+        "calories_per_100ml": 35,
+        "caffeine_per_100ml": 0,
+        "typical_volume": 290,
+        "color": (255, 255, 0),
+        "health_warning": "Moderate sugar content"
     }
 }
 
-@st.cache_data
-def fetch_nutrition_database():
-    try:
-        with st.spinner("Connecting to nutrition database..."):
-            response = requests.get(NUTRITION_DB_URL, timeout=15)  # Increased timeout
-            if response.status_code == 200:
-                st.success("✅ Successfully connected to backend database!")
-                return response.json()
-            else:
-                st.warning(f"Backend API returned status {response.status_code}. Using fallback database.")
-                return FALLBACK_NUTRITION_DATABASE
-    except requests.exceptions.Timeout:
-        st.warning("⏰ Backend API timed out. Using fallback nutrition database.")
-        return FALLBACK_NUTRITION_DATABASE
-    except requests.exceptions.ConnectionError:
-        st.warning("🔌 Could not connect to backend API. Using fallback nutrition database.")
-        return FALLBACK_NUTRITION_DATABASE
-    except requests.exceptions.RequestException as e:
-        st.warning(f"API connection issue: {str(e)[:100]}... Using fallback database.")
-        return FALLBACK_NUTRITION_DATABASE
-    except Exception as e:
-        st.warning(f"Unexpected error: {str(e)[:100]}... Using fallback database.")
-        return FALLBACK_NUTRITION_DATABASE
+def get_nutrition_info(class_name, volume=None):
+    clean_name = class_name.lower().strip()
+    data = NUTRITION_DATABASE.get(clean_name)
+    if data:
+        if volume is None:
+            volume = data['typical_volume']
+        sugar_g = round((data['sugar_per_100ml'] * volume) / 100, 1)
+        sugar_grams_daily_limit = 25
+        comparison_message = ""
+        if sugar_g <= sugar_grams_daily_limit:
+            comparison_message = f"✅ Within daily sugar limit"
+        else:
+            excess = sugar_g - sugar_grams_daily_limit
+            comparison_message = f"⚠️ Exceeds daily limit by {excess}g"
+        return {
+            "name": data['name'],
+            "volume_ml": volume,
+            "total_sugar_g": sugar_g,
+            "total_calories": round((data['calories_per_100ml'] * volume) / 100),
+            "total_caffeine_mg": round((data['caffeine_per_100ml'] * volume) / 100, 1),
+            "health_warning": data.get('health_warning', ''),
+            "comparison_message": comparison_message,
+            "sugar_per_100ml": data['sugar_per_100ml'],
+            "calories_per_100ml": data['calories_per_100ml'],
+            "caffeine_per_100ml": data['caffeine_per_100ml']
+        }
+    return None
+
 
 # Nutrition database for dashboard and comparison (copy from backend or load via API if needed)
-NUTRITION_DATABASE = fetch_nutrition_database()
+
 
 def detect_via_api(image: Image.Image):
     """Detect beverages via API with improved error handling and fallback"""
@@ -318,13 +633,14 @@ def main():
         if st.button("🔄 Check API Status"):
             with st.spinner("Checking backend..."):
                 try:
-                    response = requests.get(NUTRITION_DB_URL, timeout=10)
+                    # Only check detection API status
+                    response = requests.post(API_URL, files={"file": ("test.jpg", b"test", "image/jpeg")}, timeout=10)
                     if response.status_code == 200:
-                        st.success("✅ Backend API is responsive")
+                        st.success("✅ Detection API is responsive")
                     else:
-                        st.warning(f"⚠️ API returned status {response.status_code}")
+                        st.warning(f"⚠️ Detection API returned status {response.status_code}")
                 except requests.exceptions.Timeout:
-                    st.error("❌ API timeout - Backend may be slow")
+                    st.error("❌ Detection API timeout - Backend may be slow")
                 except requests.exceptions.ConnectionError:
                     st.error("❌ Connection failed - Backend may be down")
                 except Exception as e:
